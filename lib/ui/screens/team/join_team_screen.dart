@@ -111,7 +111,6 @@ class _JoinTeamScreenState extends State<JoinTeamScreen> {
                         itemCount: _teams.length,
                         itemBuilder: (context, index) {
                           final team = _teams[index];
-                          final leader = _leaderCache[team.leaderId];
                           
                           return TeamCard(
                             team: team,

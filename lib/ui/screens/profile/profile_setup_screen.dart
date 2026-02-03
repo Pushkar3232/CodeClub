@@ -41,37 +41,62 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final authProvider = context.read<AuthProvider>();
     final currentUser = authProvider.currentUser;
 
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User not found. Please try logging in again.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
 
-    final updatedUser = currentUser.copyWith(
-      fullName: _nameController.text.trim(),
-      branch: _selectedBranch ?? '',
-      year: _selectedYear ?? '',
-      role: _selectedRole ?? '',
-      skills: _selectedSkills,
-      bio: _bioController.text.trim(),
-      isProfileComplete: true,
-      updatedAt: DateTime.now(),
-    );
-
-    final success = await authProvider.updateProfile(updatedUser);
-
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(AppConstants.profileSaved),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
+    try {
+      final updatedUser = currentUser.copyWith(
+        fullName: _nameController.text.trim(),
+        branch: _selectedBranch ?? '',
+        year: _selectedYear ?? '',
+        role: _selectedRole ?? '',
+        skills: _selectedSkills,
+        bio: _bioController.text.trim(),
+        isProfileComplete: true,
+        updatedAt: DateTime.now(),
       );
-    } else if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Failed to save profile'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+
+      final success = await authProvider.updateProfile(updatedUser);
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(AppConstants.profileSaved),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        // Navigate to home or wherever appropriate
+        Navigator.of(context).pop();
+      } else if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.errorMessage ?? 'Failed to save profile'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving profile: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -128,7 +153,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 child: Row(
                   children: List.generate(3, (index) {
                     final isActive = index <= _currentStep;
-                    final isCompleted = index < _currentStep;
                     return Expanded(
                       child: Row(
                         children: [

@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow users to read other users' profiles for team matching
+    // but only if they are authenticated and the profile is complete
+    match /users/{userId} {
+      allow read: if request.auth != null && 
+                     resource != null && 
+                     resource.data.isProfileComplete == true;
+    }
+    
+    // Teams collection
+    match /teams/{teamId} {
+      // Team members can read and write to their team
+      allow read, write: if request.auth != null && 
+                            request.auth.uid in resource.data.memberIds;
+      
+      // Allow creation of new teams
+      allow create: if request.auth != null && 
+                      request.auth.uid == resource.data.createdBy;
+    }
+    
+    // Team requests collection
+    match /teamRequests/{requestId} {
+      // Users can create requests
+      allow create: if request.auth != null && 
+                      request.auth.uid == resource.data.fromUserId;
+      
+      // Team leaders can read requests for their teams
+      allow read: if request.auth != null;
+      
+      // Users can read their own requests and team leaders can update them
+      allow read, update: if request.auth != null && 
+                             (request.auth.uid == resource.data.fromUserId ||
+                              request.auth.uid == resource.data.toUserId);
+    }
+    
+    // Hackathons collection - everyone can read, only admins can write
+    match /hackathons/{hackathonId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                      request.auth.token.admin == true;
+    }
+  }
+}

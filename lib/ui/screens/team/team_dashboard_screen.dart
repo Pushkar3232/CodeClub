@@ -46,8 +46,9 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
 
     try {
       // Load leader
-      if (team.leaderId != null) {
-        _leader = await _userService.getUserById(team.leaderId!);
+      // Leader ID is always available
+      {
+        _leader = await _userService.getUserById(team.leaderId);
       }
       
       // Load members

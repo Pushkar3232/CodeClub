@@ -142,8 +142,7 @@ class HackathonDetailScreen extends StatelessWidget {
                   ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
                   const SizedBox(height: 24),
                   // Registration deadline
-                  if (hackathon.registrationDeadline != null)
-                    Card(
+                  Card(
                       margin: EdgeInsets.zero,
                       color: hackathon.isRegistrationOpen
                           ? AppColors.success.withValues(alpha: 0.1)
@@ -177,7 +176,7 @@ class HackathonDetailScreen extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    'Deadline: ${hackathon.registrationDeadline!.formatDateFull}',
+                                    'Deadline: ${hackathon.registrationDeadline.formatDateFull}',
                                     style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
@@ -187,8 +186,7 @@ class HackathonDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
-                  if (hackathon.registrationDeadline != null)
-                    const SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   // Description
                   Text(
                     'About',
@@ -203,16 +201,14 @@ class HackathonDetailScreen extends StatelessWidget {
                   ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
                   const SizedBox(height: 24),
                   // Prizes
-                  if (hackathon.prizes != null &&
-                      hackathon.prizes!.isNotEmpty) ...[
-                    Text(
+                  if (hackathon.prizes.isNotEmpty) ...[                    Text(
                       'Prizes',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                     ).animate().fadeIn(delay: 350.ms, duration: 400.ms),
                     const SizedBox(height: 12),
-                    ...hackathon.prizes!.asMap().entries.map((entry) {
+                    ...hackathon.prizes.asMap().entries.map((entry) {
                       return _PrizeCard(
                         position: entry.key + 1,
                         prize: entry.value,

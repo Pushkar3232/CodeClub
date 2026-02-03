@@ -41,46 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'your-web-api-key-here',
-    appId: '1:your-app-id:web:your-app-id',
-    messagingSenderId: 'your-sender-id',
+    apiKey: 'AIzaSyDttTkQI4q6R_AkhLKtSOVV2bx2fMRn0Ro',
+    appId: '1:306909454051:web:f1798811a65338400c2fd6',
+    messagingSenderId: '306909454051',
     projectId: 'codeclub-b8e50',
     authDomain: 'codeclub-b8e50.firebaseapp.com',
-    storageBucket: 'codeclub-b8e50.appspot.com',
+    storageBucket: 'codeclub-b8e50.firebasestorage.app',
+    measurementId: 'G-SFCPCDHZLJ',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'your-android-api-key-here',
-    appId: '1:your-app-id:android:your-app-id',
-    messagingSenderId: 'your-sender-id',
+    apiKey: 'AIzaSyBpA0WKmrRigpZz1BsNlE-pmzcPjJi_Veo',
+    appId: '1:306909454051:android:fb4bdd5e8e9d83830c2fd6',
+    messagingSenderId: '306909454051',
     projectId: 'codeclub-b8e50',
-    storageBucket: 'codeclub-b8e50.appspot.com',
+    storageBucket: 'codeclub-b8e50.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'your-ios-api-key-here',
-    appId: '1:your-app-id:ios:your-app-id',
-    messagingSenderId: 'your-sender-id',
-    projectId: 'your-project-id',
-    storageBucket: 'your-project-id.appspot.com',
+    apiKey: 'AIzaSyB0Z_zf8dN38afs3zexz9e0jAdKwa49CZo',
+    appId: '1:306909454051:ios:3082724df81d488f0c2fd6',
+    messagingSenderId: '306909454051',
+    projectId: 'codeclub-b8e50',
+    storageBucket: 'codeclub-b8e50.firebasestorage.app',
     iosBundleId: 'com.example.codeclub',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'your-macos-api-key-here',
-    appId: '1:your-app-id:macos:your-app-id',
-    messagingSenderId: 'your-sender-id',
-    projectId: 'your-project-id',
-    storageBucket: 'your-project-id.appspot.com',
+    apiKey: 'AIzaSyB0Z_zf8dN38afs3zexz9e0jAdKwa49CZo',
+    appId: '1:306909454051:ios:3082724df81d488f0c2fd6',
+    messagingSenderId: '306909454051',
+    projectId: 'codeclub-b8e50',
+    storageBucket: 'codeclub-b8e50.firebasestorage.app',
     iosBundleId: 'com.example.codeclub',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'your-windows-api-key-here',
-    appId: '1:your-app-id:windows:your-app-id',
-    messagingSenderId: 'your-sender-id',
-    projectId: 'your-project-id',
-    authDomain: 'your-project-id.firebaseapp.com',
-    storageBucket: 'your-project-id.appspot.com',
+    apiKey: 'AIzaSyDttTkQI4q6R_AkhLKtSOVV2bx2fMRn0Ro',
+    appId: '1:306909454051:web:4dde77a122c7f7bc0c2fd6',
+    messagingSenderId: '306909454051',
+    projectId: 'codeclub-b8e50',
+    authDomain: 'codeclub-b8e50.firebaseapp.com',
+    storageBucket: 'codeclub-b8e50.firebasestorage.app',
+    measurementId: 'G-FJZTHELKZ7',
   );
+
 }

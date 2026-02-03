@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import '../../core/utils/debug_utils.dart';
 
 /// User service for CodeClub
 /// Handles all user-related Firestore operations
@@ -13,12 +14,16 @@ class UserService {
   /// Get user by ID
   Future<UserModel?> getUserById(String uid) async {
     try {
+      DebugUtils.debugFirestore('GET', 'users', uid);
       final doc = await _usersCollection.doc(uid).get();
-      if (doc.exists) {
+      if (doc.exists && doc.data() != null) {
+        DebugUtils.debugPrint('Successfully retrieved user: ${doc.data()?['fullName']}', 'UserService');
         return UserModel.fromFirestore(doc);
       }
+      DebugUtils.debugPrint('User not found: $uid', 'UserService');
       return null;
     } catch (e) {
+      DebugUtils.debugError('Error getting user by ID: $uid', e);
       rethrow;
     }
   }
@@ -33,8 +38,17 @@ class UserService {
   /// Update user profile
   Future<void> updateUserProfile(UserModel user) async {
     try {
-      await _usersCollection.doc(user.uid).update(user.toFirestore());
+      DebugUtils.debugFirestore('UPDATE', 'users', user.uid);
+      DebugUtils.debugPrint('Updating profile for: ${user.fullName}', 'UserService');
+      
+      await _usersCollection.doc(user.uid).set(
+        user.toFirestore(),
+        SetOptions(merge: true),
+      );
+      
+      DebugUtils.debugPrint('Profile updated successfully', 'UserService');
     } catch (e) {
+      DebugUtils.debugError('Error updating user profile: ${user.uid}', e);
       rethrow;
     }
   }
@@ -45,8 +59,14 @@ class UserService {
     List<String>? excludeUserIds,
   }) async {
     try {
-      final query = _usersCollection
-          .where('isProfileComplete', isEqualTo: true);
+      // Use a simple query that doesn't require custom indexes
+      Query query = _usersCollection;
+      
+      // Add the isProfileComplete filter
+      query = query.where('isProfileComplete', isEqualTo: true);
+      
+      // Limit the results to avoid large queries
+      query = query.limit(100);
       
       final snapshot = await query.get();
       
@@ -59,7 +79,22 @@ class UserService {
           .where((user) => !excludeIds.contains(user.uid))
           .toList();
     } catch (e) {
-      rethrow;
+      print('Error getting all users: $e');
+      // If the query fails due to missing index, try without complex filtering
+      try {
+        final simpleQuery = await _usersCollection.limit(50).get();
+        final excludeIds = <String>{};
+        if (excludeUserId != null) excludeIds.add(excludeUserId);
+        if (excludeUserIds != null) excludeIds.addAll(excludeUserIds);
+        
+        return simpleQuery.docs
+            .map((doc) => UserModel.fromFirestore(doc))
+            .where((user) => user.isProfileComplete && !excludeIds.contains(user.uid))
+            .toList();
+      } catch (e2) {
+        print('Error with fallback query: $e2');
+        return [];
+      }
     }
   }
 
@@ -79,7 +114,9 @@ class UserService {
       return users.where((user) {
         // Filter by query (name search)
         if (query != null && query.isNotEmpty) {
-          if (!user.fullName.toLowerCase().contains(query.toLowerCase())) {
+          final queryLower = query.toLowerCase();
+          if (!user.fullName.toLowerCase().contains(queryLower) &&
+              !user.email.toLowerCase().contains(queryLower)) {
             return false;
           }
         }

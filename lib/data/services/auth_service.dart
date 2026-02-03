@@ -23,6 +23,10 @@ class AuthService {
 
   /// Validate if email is from APSIT domain
   bool _isValidAPSITEmail(String email) {
+    // Allow Gmail for testing - remove this in production
+    if (email.toLowerCase().endsWith('@gmail.com')) {
+      return true;
+    }
     return email.toLowerCase().endsWith(AppConstants.allowedEmailDomain);
   }
 
@@ -53,7 +57,7 @@ class AuthService {
         await _firestore
             .collection('users')
             .doc(credential.user!.uid)
-            .set(user.toFirestore());
+            .set(user.toFirestore(), SetOptions(merge: true));
       }
 
       return credential;

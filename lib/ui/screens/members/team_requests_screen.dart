@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_constants.dart';
+// Removed unused import: app_constants
 import '../../../data/models/team_request_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/user_service.dart';
