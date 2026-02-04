@@ -23,12 +23,12 @@ class FindMembersScreen extends StatefulWidget {
 class _FindMembersScreenState extends State<FindMembersScreen> {
   final UserService _userService = UserService();
   final TextEditingController _searchController = TextEditingController();
-  
+
   List<UserModel> _users = [];
   List<UserModel> _filteredUsers = [];
   bool _isLoading = true;
   String? _errorMessage;
-  
+
   // Filters
   String? _selectedSkill;
   String? _selectedRole;
@@ -37,7 +37,10 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    // Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUsers();
+    });
   }
 
   @override
@@ -47,6 +50,8 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
   }
 
   Future<void> _loadUsers() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -59,6 +64,8 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
     } catch (e) {
       _errorMessage = e.toString();
     }
+
+    if (!mounted) return;
 
     setState(() {
       _isLoading = false;
@@ -144,7 +151,7 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
   Future<void> _sendTeamRequest(UserModel toUser) async {
     final authProvider = context.read<AuthProvider>();
     final teamProvider = context.read<TeamProvider>();
-    
+
     final currentUserId = authProvider.currentUserId;
     if (currentUserId == null) return;
 
@@ -170,14 +177,13 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasFilters = _selectedSkill != null ||
+    final hasFilters =
+        _selectedSkill != null ||
         _selectedRole != null ||
         _selectedYear != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Find Team Members'),
-      ),
+      appBar: AppBar(title: const Text('Find Team Members')),
       body: Column(
         children: [
           // Search bar
@@ -260,42 +266,37 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
             child: _isLoading
                 ? const ShimmerList(itemCount: 5, itemHeight: 150)
                 : _errorMessage != null
-                    ? ErrorStateWidget(
-                        message: _errorMessage!,
-                        onRetry: _loadUsers,
-                      )
-                    : _filteredUsers.isEmpty
-                        ? const EmptyStateWidget(
-                            icon: Icons.person_search_rounded,
-                            title: 'No members found',
-                            subtitle:
-                                'Try adjusting your filters or search query',
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _loadUsers,
-                            child: ListView.builder(
-                              itemCount: _filteredUsers.length,
-                              itemBuilder: (context, index) {
-                                final user = _filteredUsers[index];
-                                return UserProfileCard(
-                                  user: user,
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            UserDetailScreen(user: user),
-                                      ),
-                                    );
-                                  },
-                                  onMessageTap: () {
-                                    // TODO: Navigate to chat
-                                  },
-                                  onRequestTap: () => _sendTeamRequest(user),
-                                );
-                              },
-                            ),
-                          ),
+                ? ErrorStateWidget(message: _errorMessage!, onRetry: _loadUsers)
+                : _filteredUsers.isEmpty
+                ? const EmptyStateWidget(
+                    icon: Icons.person_search_rounded,
+                    title: 'No members found',
+                    subtitle: 'Try adjusting your filters or search query',
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadUsers,
+                    child: ListView.builder(
+                      itemCount: _filteredUsers.length,
+                      itemBuilder: (context, index) {
+                        final user = _filteredUsers[index];
+                        return UserProfileCard(
+                          user: user,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => UserDetailScreen(user: user),
+                              ),
+                            );
+                          },
+                          onMessageTap: () {
+                            // TODO: Navigate to chat
+                          },
+                          onRequestTap: () => _sendTeamRequest(user),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -308,10 +309,7 @@ class _FilterChip extends StatelessWidget {
   final String label;
   final VoidCallback onRemove;
 
-  const _FilterChip({
-    required this.label,
-    required this.onRemove,
-  });
+  const _FilterChip({required this.label, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -410,8 +408,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   Text(
                     'Filter Members',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   TextButton(
                     onPressed: widget.onClear,
@@ -433,8 +431,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     Text(
                       'Role',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -458,8 +456,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     Text(
                       'Year',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -483,8 +481,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     Text(
                       'Skill',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Wrap(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../data/models/hackathon_model.dart';
-import '../../data/services/hackathon_service.dart';
+import 'package:flutter/scheduler.dart';
+import '../data/models/hackathon_model.dart';
+import '../data/services/hackathon_service.dart';
 
 /// Hackathon provider for managing hackathon state
 class HackathonProvider extends ChangeNotifier {
@@ -33,7 +34,7 @@ class HackathonProvider extends ChangeNotifier {
   Future<void> loadHackathons() async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       _hackathons = await _hackathonService.getAllHackathons();
@@ -42,25 +43,25 @@ class HackathonProvider extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Register individual for hackathon
   Future<bool> registerIndividual(String hackathonId, String userId) async {
     try {
       _isLoading = true;
-      notifyListeners();
+      _safeNotifyListeners();
       
       await _hackathonService.registerIndividual(hackathonId, userId);
       await loadHackathons(); // Refresh data
       
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -69,18 +70,18 @@ class HackathonProvider extends ChangeNotifier {
   Future<bool> registerTeam(String hackathonId, String teamId) async {
     try {
       _isLoading = true;
-      notifyListeners();
+      _safeNotifyListeners();
       
       await _hackathonService.registerTeam(hackathonId, teamId);
       await loadHackathons(); // Refresh data
       
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -89,7 +90,7 @@ class HackathonProvider extends ChangeNotifier {
   Future<void> selectHackathon(String hackathonId) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       _selectedHackathon = await _hackathonService.getHackathonById(hackathonId);
@@ -98,14 +99,14 @@ class HackathonProvider extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Register as individual
   Future<bool> registerAsIndividual(String hackathonId, String userId) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       await _hackathonService.registerIndividual(hackathonId, userId);
@@ -119,12 +120,12 @@ class HackathonProvider extends ChangeNotifier {
       await loadHackathons();
       
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -133,7 +134,7 @@ class HackathonProvider extends ChangeNotifier {
   Future<bool> registerAsTeam(String hackathonId, String teamId) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       await _hackathonService.registerTeam(hackathonId, teamId);
@@ -147,12 +148,12 @@ class HackathonProvider extends ChangeNotifier {
       await loadHackathons();
       
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -196,12 +197,23 @@ class HackathonProvider extends ChangeNotifier {
   /// Clear selection
   void clearSelection() {
     _selectedHackathon = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Clear error
   void clearError() {
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
+  }
+
+  /// Safe notify listeners to avoid setState during build
+  void _safeNotifyListeners() {
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      notifyListeners();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
+    }
   }
 }

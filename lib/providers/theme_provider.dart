@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Theme provider for managing app theme (light/dark mode)
@@ -27,7 +28,7 @@ class ThemeProvider extends ChangeNotifier {
         (mode) => mode.name == themeName,
         orElse: () => ThemeMode.system,
       );
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -35,7 +36,7 @@ class ThemeProvider extends ChangeNotifier {
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
     await _prefs?.setString(_themeKey, mode.name);
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Toggle between light and dark mode
@@ -60,5 +61,16 @@ class ThemeProvider extends ChangeNotifier {
   /// Set system mode
   Future<void> setSystemMode() async {
     await setThemeMode(ThemeMode.system);
+  }
+
+  /// Safe notify listeners to avoid setState during build
+  void _safeNotifyListeners() {
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      notifyListeners();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
+    }
   }
 }

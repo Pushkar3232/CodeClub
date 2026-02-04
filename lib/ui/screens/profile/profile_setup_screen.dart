@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
@@ -76,8 +77,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        // Navigate to home or wherever appropriate
-        Navigator.of(context).pop();
+        // Navigate to home using GoRouter
+        context.go('/home');
       } else if (!success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -29,7 +29,10 @@ class _JoinTeamScreenState extends State<JoinTeamScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTeams();
+    // Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTeams();
+    });
   }
 
   Future<void> _loadTeams() async {

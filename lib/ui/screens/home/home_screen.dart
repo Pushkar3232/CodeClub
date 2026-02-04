@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../chat/chat_list_screen.dart';
@@ -30,10 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -91,200 +89,193 @@ class _HomeTabContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.currentUser;
 
-    return Scaffold(
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // App bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome back,',
-                            style:
-                                Theme.of(context).textTheme.bodyMedium?.copyWith(
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final user = authProvider.currentUser;
+
+        return Scaffold(
+          body: SafeArea(
+            child: CustomScrollView(
+              slivers: [
+                // App bar
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Welcome back,',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
                                       color: isDark
                                           ? AppColors.textSecondaryDark
                                           : AppColors.textSecondaryLight,
                                     ),
-                          ),
-                          Text(
-                            user?.fullName ?? 'Student',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        onPressed: () {
-                          // TODO: Open notifications
-                        },
-                        icon: const Icon(
-                          Icons.notifications_outlined,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(duration: 500.ms),
-            ),
-            // Quick actions
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quick Actions',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _QuickActionCard(
-                            icon: Icons.group_add_rounded,
-                            title: 'Create Team',
-                            color: AppColors.primaryBlue,
-                            onTap: () {
-                              Navigator.pushNamed(context, '/create-team');
-                            },
+                              ),
+                              Text(
+                                user?.fullName ?? 'Student',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _QuickActionCard(
-                            icon: Icons.search_rounded,
-                            title: 'Find Members',
-                            color: AppColors.secondaryGreen,
-                            onTap: () {
-                              Navigator.pushNamed(context, '/find-members');
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            onPressed: () {
+                              // TODO: Open notifications
                             },
+                            icon: const Icon(
+                              Icons.notifications_outlined,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
-                    ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _QuickActionCard(
-                            icon: Icons.groups_rounded,
-                            title: 'Join Team',
-                            color: AppColors.warning,
-                            onTap: () {
-                              Navigator.pushNamed(context, '/join-team');
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _QuickActionCard(
-                            icon: Icons.person_add_alt_1_rounded,
-                            title: 'Requests',
-                            color: AppColors.error,
-                            onTap: () {
-                              Navigator.pushNamed(context, '/team-requests');
-                            },
-                          ),
-                        ),
-                      ],
-                    ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
-                  ],
+                    ),
+                  ).animate().fadeIn(duration: 500.ms),
                 ),
-              ),
-            ),
-            // My Team section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Quick actions
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'My Team',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          'Quick Actions',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/team-dashboard');
-                          },
-                          child: const Text('View'),
-                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _QuickActionCard(
+                                icon: Icons.group_add_rounded,
+                                title: 'Create Team',
+                                color: AppColors.primaryBlue,
+                                onTap: () {
+                                  context.push('/create-team');
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _QuickActionCard(
+                                icon: Icons.search_rounded,
+                                title: 'Find Members',
+                                color: AppColors.secondaryGreen,
+                                onTap: () {
+                                  context.push('/find-members');
+                                },
+                              ),
+                            ),
+                          ],
+                        ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _QuickActionCard(
+                                icon: Icons.groups_rounded,
+                                title: 'Join Team',
+                                color: AppColors.warning,
+                                onTap: () {
+                                  context.push('/join-team');
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _QuickActionCard(
+                                icon: Icons.person_add_alt_1_rounded,
+                                title: 'Requests',
+                                color: AppColors.error,
+                                onTap: () {
+                                  context.push('/team-requests');
+                                },
+                              ),
+                            ),
+                          ],
+                        ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _MyTeamCard(),
-                  ],
-                ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
-              ),
-            ),
-            // Featured hackathons
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ),
+                ),
+                // My Team section
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Upcoming Hackathons',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'My Team',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                context.push('/team-dashboard');
+                              },
+                              child: const Text('View'),
+                            ),
+                          ],
                         ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/hackathons');
-                          },
-                          child: const Text('See all'),
-                        ),
+                        const SizedBox(height: 12),
+                        _MyTeamCard(),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    _FeaturedHackathonCard(),
-                  ],
-                ).animate().fadeIn(delay: 250.ms, duration: 400.ms),
-              ),
+                    ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+                  ),
+                ),
+                // Featured hackathons
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Upcoming Hackathons',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                context.push('/hackathons');
+                              },
+                              child: const Text('See all'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _FeaturedHackathonCard(),
+                      ],
+                    ).animate().fadeIn(delay: 250.ms, duration: 400.ms),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              ],
             ),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 32),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -321,18 +312,15 @@ class _QuickActionCard extends StatelessWidget {
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                ),
+                child: Icon(icon, color: color),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Icon(
@@ -373,23 +361,23 @@ class _MyTeamCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               'No team yet',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
               'Create or join a team to get started',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
-                  ),
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondaryLight,
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/create-team');
+                context.push('/create-team');
               },
               child: const Text('Create Team'),
             ),
@@ -413,9 +401,7 @@ class _FeaturedHackathonCard extends StatelessWidget {
           Container(
             height: 120,
             width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-            ),
+            decoration: BoxDecoration(gradient: AppColors.primaryGradient),
             child: const Center(
               child: Icon(
                 Icons.emoji_events_rounded,
@@ -432,8 +418,8 @@ class _FeaturedHackathonCard extends StatelessWidget {
                 Text(
                   'Upcoming Hackathon',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -443,7 +429,7 @@ class _FeaturedHackathonCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/hackathons');
+                    context.push('/hackathons');
                   },
                   child: const Text('Browse Events →'),
                 ),

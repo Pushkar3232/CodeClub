@@ -24,13 +24,19 @@ class AppRouter {
   AppRouter(this.authProvider);
 
   late final GoRouter router = GoRouter(
-    refreshListenable: authProvider,
+    refreshListenable: _AuthStateNotifier(authProvider),
     initialLocation: '/login',
     redirect: (context, state) {
       final isLoggedIn = authProvider.authState == AuthState.authenticated;
-      final isLoggingIn = state.matchedLocation == '/login' ||
+      final isLoggingIn =
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
           state.matchedLocation == '/forgot-password';
+
+      // If still initializing, don't redirect yet
+      if (authProvider.authState == AuthState.initial) {
+        return null;
+      }
 
       // If not logged in and not on auth page, redirect to login
       if (!isLoggedIn && !isLoggingIn) {
@@ -127,8 +133,7 @@ class AppRouter {
         builder: (context, state) {
           final chatId = state.pathParameters['chatId']!;
           final title = state.uri.queryParameters['title'] ?? 'Chat';
-          final isGroupChat =
-              state.uri.queryParameters['isGroup'] == 'true';
+          final isGroupChat = state.uri.queryParameters['isGroup'] == 'true';
           return ChatScreen(
             chatId: chatId,
             title: title,
@@ -173,4 +178,28 @@ class AppRouter {
       ),
     ),
   );
+}
+
+/// Custom notifier for auth state changes to prevent excessive router rebuilds
+class _AuthStateNotifier extends ChangeNotifier {
+  final AuthProvider _authProvider;
+  AuthState? _lastAuthState;
+
+  _AuthStateNotifier(this._authProvider) {
+    _lastAuthState = _authProvider.authState;
+    _authProvider.addListener(_onAuthStateChanged);
+  }
+
+  void _onAuthStateChanged() {
+    if (_authProvider.authState != _lastAuthState) {
+      _lastAuthState = _authProvider.authState;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onAuthStateChanged);
+    super.dispose();
+  }
 }

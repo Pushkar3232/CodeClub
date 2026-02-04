@@ -30,7 +30,10 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTeamData();
+    // Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTeamData();
+    });
   }
 
   Future<void> _loadTeamData() async {

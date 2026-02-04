@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../data/models/chat_model.dart';
-import '../../data/models/message_model.dart';
-import '../../data/models/user_model.dart';
-import '../../data/services/chat_service.dart';
-import '../../data/services/user_service.dart';
+import 'package:flutter/scheduler.dart';
+import '../data/models/chat_model.dart';
+import '../data/models/message_model.dart';
+import '../data/models/user_model.dart';
+import '../data/services/chat_service.dart';
+import '../data/services/user_service.dart';
 
 /// Chat provider for managing chat state
 class ChatProvider extends ChangeNotifier {
@@ -42,15 +43,22 @@ class ChatProvider extends ChangeNotifier {
         }
         
         if (userIds.isNotEmpty) {
-          final users = await _userService.getUsersByIds(userIds.toList());
-          _chatUsers = {for (var user in users) user.uid: user};
+          try {
+            final users = await _userService.getUsersByIds(userIds.toList());
+            _chatUsers = {for (var user in users) user.uid: user};
+          } catch (e) {
+            print('Error loading chat users: $e');
+            _errorMessage = e.toString();
+          }
         }
         
-        notifyListeners();
+        // Use addPostFrameCallback to avoid setState during build
+        _safeNotifyListeners();
       },
       onError: (e) {
+        print('Error loading chats: $e');
         _errorMessage = e.toString();
-        notifyListeners();
+        _safeNotifyListeners();
       },
     );
   }
@@ -93,7 +101,7 @@ class ChatProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final chat = await _chatService.createTeamChat(
@@ -103,12 +111,12 @@ class ChatProvider extends ChangeNotifier {
       );
       await selectChat(chat);
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return chat;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return null;
     }
   }
@@ -117,7 +125,7 @@ class ChatProvider extends ChangeNotifier {
   Future<void> selectChat(ChatModel chat) async {
     _currentChat = chat;
     _messages = [];
-    notifyListeners();
+    _safeNotifyListeners();
 
     // Load users for this chat
     final users = await _userService.getUsersByIds(chat.participantIds);
@@ -130,11 +138,11 @@ class ChatProvider extends ChangeNotifier {
     _messagesSubscription = _chatService.getMessages(chat.id).listen(
       (messages) {
         _messages = messages;
-        notifyListeners();
+        _safeNotifyListeners();
       },
       onError: (e) {
         _errorMessage = e.toString();
-        notifyListeners();
+        _safeNotifyListeners();
       },
     );
   }
@@ -157,7 +165,7 @@ class ChatProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = e.toString();
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -178,7 +186,7 @@ class ChatProvider extends ChangeNotifier {
     _messagesSubscription?.cancel();
     _currentChat = null;
     _messages = [];
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Get user for chat display
@@ -191,7 +199,18 @@ class ChatProvider extends ChangeNotifier {
   /// Clear error
   void clearError() {
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
+  }
+
+  /// Safe notify listeners to avoid setState during build
+  void _safeNotifyListeners() {
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      notifyListeners();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
+    }
   }
 
   @override

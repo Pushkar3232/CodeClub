@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../data/models/user_model.dart';
 import '../data/services/auth_service.dart';
@@ -16,6 +17,8 @@ class AuthProvider extends ChangeNotifier {
   UserModel? _currentUser;
   String? _errorMessage;
   bool _isLoading = false;
+  Timer? _notificationDebouncer;
+  StreamSubscription? _authStateSubscription;
 
   // Getters
   AuthState get authState => _authState;
@@ -31,86 +34,125 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Initialize auth state
-  Future<void> _init() async {
-    _authService.authStateChanges.listen((User? user) async {
-      if (user != null) {
-        await _loadUserProfile();
-        _authState = AuthState.authenticated;
-      } else {
-        _currentUser = null;
-        _authState = AuthState.unauthenticated;
-      }
-      notifyListeners();
+  void _init() {
+    // Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupAuthListener();
+      _checkExistingUser();
     });
+  }
+
+  /// Setup auth state change listener
+  void _setupAuthListener() {
+    _authStateSubscription = _authService.authStateChanges.listen((
+      User? user,
+    ) async {
+      try {
+        if (user != null) {
+          _authState = AuthState.authenticated;
+          await _loadUserProfile();
+        } else {
+          _currentUser = null;
+          _authState = AuthState.unauthenticated;
+        }
+        _debouncedNotifyListeners();
+      } catch (e) {
+        _errorMessage = e.toString();
+        _authState = AuthState.unauthenticated;
+        _debouncedNotifyListeners();
+      }
+    });
+  }
+
+  /// Check for existing user session on app startup
+  Future<void> _checkExistingUser() async {
+    if (_authService.currentUser != null) {
+      try {
+        _authState = AuthState.authenticated;
+        await _loadUserProfile();
+        _debouncedNotifyListeners();
+      } catch (e) {
+        _errorMessage = e.toString();
+        _authState = AuthState.unauthenticated;
+        _debouncedNotifyListeners();
+      }
+    } else {
+      // No user found, set state to unauthenticated
+      _authState = AuthState.unauthenticated;
+      _debouncedNotifyListeners();
+    }
   }
 
   /// Load current user profile
   Future<void> _loadUserProfile() async {
     try {
       _currentUser = await _authService.getCurrentUserProfile();
+      if (_currentUser == null && _authService.currentUserId != null) {
+        // Profile doesn't exist yet, create a basic one
+        print('User profile not found in Firestore, user might need to complete profile');
+      }
     } catch (e) {
       _errorMessage = e.toString();
+      print('Error loading user profile: $e');
     }
   }
 
   /// Refresh user profile
   Future<void> refreshUserProfile() async {
+    if (_authService.currentUserId == null) {
+      _currentUser = null;
+      return;
+    }
     await _loadUserProfile();
-    notifyListeners();
+    _debouncedNotifyListeners();
   }
 
   /// Sign up
-  Future<bool> signUp({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> signUp({required String email, required String password}) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _debouncedNotifyListeners();
 
     try {
       await _authService.signUp(email: email, password: password);
       await _loadUserProfile();
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
       _errorMessage = e.userMessage;
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return false;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return false;
     }
   }
 
   /// Sign in
-  Future<bool> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> signIn({required String email, required String password}) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _debouncedNotifyListeners();
 
     try {
       await _authService.signIn(email: email, password: password);
       await _loadUserProfile();
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
       _errorMessage = e.userMessage;
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return false;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return false;
     }
   }
@@ -118,17 +160,22 @@ class AuthProvider extends ChangeNotifier {
   /// Sign out
   Future<void> signOut() async {
     _isLoading = true;
-    notifyListeners();
+    _debouncedNotifyListeners();
 
     try {
       await _authService.signOut();
       _currentUser = null;
       _authState = AuthState.unauthenticated;
+      print('Sign out successful - auth state: $_authState');
     } catch (e) {
       _errorMessage = e.toString();
+      print('Sign out error: $e');
     }
 
     _isLoading = false;
+    // Cancel any pending debounced notification and notify immediately
+    _notificationDebouncer?.cancel();
+    print('Calling notifyListeners from signOut');
     notifyListeners();
   }
 
@@ -136,22 +183,22 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> sendPasswordResetEmail(String email) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _debouncedNotifyListeners();
 
     try {
       await _authService.sendPasswordResetEmail(email);
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
       _errorMessage = e.userMessage;
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return false;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return false;
     }
   }
@@ -160,18 +207,18 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> updateProfile(UserModel updatedUser) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _debouncedNotifyListeners();
 
     try {
       await _userService.updateUserProfile(updatedUser);
       _currentUser = updatedUser;
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _debouncedNotifyListeners();
       return false;
     }
   }
@@ -179,6 +226,21 @@ class AuthProvider extends ChangeNotifier {
   /// Clear error message
   void clearError() {
     _errorMessage = null;
-    notifyListeners();
+    _debouncedNotifyListeners();
+  }
+
+  /// Debounced notify listeners to prevent excessive rebuilds
+  void _debouncedNotifyListeners() {
+    _notificationDebouncer?.cancel();
+    _notificationDebouncer = Timer(const Duration(milliseconds: 50), () {
+      notifyListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationDebouncer?.cancel();
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 }

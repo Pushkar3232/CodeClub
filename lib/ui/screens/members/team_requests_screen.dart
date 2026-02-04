@@ -29,7 +29,10 @@ class _TeamRequestsScreenState extends State<TeamRequestsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadRequestsData();
+    // Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRequestsData();
+    });
   }
 
   @override

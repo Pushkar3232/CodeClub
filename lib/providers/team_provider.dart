@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../data/models/team_model.dart';
-import '../../data/models/team_request_model.dart';
-import '../../data/models/user_model.dart';
-import '../../data/services/team_service.dart';
-import '../../data/services/user_service.dart';
+import 'package:flutter/scheduler.dart';
+import '../data/models/team_model.dart';
+import '../data/models/team_request_model.dart';
+import '../data/models/user_model.dart';
+import '../data/services/team_service.dart';
+import '../data/services/user_service.dart';
 
 /// Team provider for managing team state
 class TeamProvider extends ChangeNotifier {
@@ -31,12 +32,12 @@ class TeamProvider extends ChangeNotifier {
     if (teamId == null) {
       _currentTeam = null;
       _teamMembers = [];
-      notifyListeners();
+      _safeNotifyListeners();
       return;
     }
 
     _isLoading = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       _currentTeam = await _teamService.getTeamById(teamId);
@@ -48,7 +49,7 @@ class TeamProvider extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Create a new team
@@ -61,7 +62,7 @@ class TeamProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       _currentTeam = await _teamService.createTeam(
@@ -73,12 +74,12 @@ class TeamProvider extends ChangeNotifier {
       );
       _teamMembers = await _userService.getUsersByIds(_currentTeam!.memberIds);
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -89,19 +90,19 @@ class TeamProvider extends ChangeNotifier {
 
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       await _teamService.removeMemberFromTeam(_currentTeam!.id, userId);
       _currentTeam = null;
       _teamMembers = [];
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -114,7 +115,7 @@ class TeamProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       await _teamService.sendTeamRequest(
@@ -124,12 +125,12 @@ class TeamProvider extends ChangeNotifier {
         message: message,
       );
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -138,7 +139,7 @@ class TeamProvider extends ChangeNotifier {
   Future<bool> acceptRequest(TeamRequestModel request) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       await _teamService.acceptRequest(request);
@@ -147,12 +148,12 @@ class TeamProvider extends ChangeNotifier {
         await loadCurrentTeam(request.teamId);
       }
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -161,17 +162,17 @@ class TeamProvider extends ChangeNotifier {
   Future<bool> rejectRequest(String requestId) async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       await _teamService.rejectRequest(requestId);
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return false;
     }
   }
@@ -180,7 +181,7 @@ class TeamProvider extends ChangeNotifier {
   void listenToIncomingRequests(String userId) {
     _teamService.getIncomingRequests(userId).listen((requests) {
       _incomingRequests = requests;
-      notifyListeners();
+      _safeNotifyListeners();
     });
   }
 
@@ -188,14 +189,14 @@ class TeamProvider extends ChangeNotifier {
   void listenToOutgoingRequests(String userId) {
     _teamService.getOutgoingRequests(userId).listen((requests) {
       _outgoingRequests = requests;
-      notifyListeners();
+      _safeNotifyListeners();
     });
   }
 
   /// Clear error
   void clearError() {
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Clear team data
@@ -204,6 +205,17 @@ class TeamProvider extends ChangeNotifier {
     _teamMembers = [];
     _incomingRequests = [];
     _outgoingRequests = [];
-    notifyListeners();
+    _safeNotifyListeners();
+  }
+
+  /// Safe notify listeners to avoid setState during build
+  void _safeNotifyListeners() {
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      notifyListeners();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
+    }
   }
 }

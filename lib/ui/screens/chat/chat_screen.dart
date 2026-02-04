@@ -44,8 +44,11 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _chatTitle = widget.title;
-    _loadChatData();
-    _listenToMessages();
+    // Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadChatData();
+      _listenToMessages();
+    });
   }
 
   @override

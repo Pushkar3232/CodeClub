@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
@@ -10,8 +11,22 @@ import '../../widgets/user_card.dart';
 import 'edit_profile_screen.dart';
 
 /// Profile screen showing user details
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh profile when screen is mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthProvider>().refreshUserProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +61,10 @@ class ProfileScreen extends StatelessWidget {
         builder: (context, auth, _) {
           final user = auth.currentUser;
 
+          if (auth.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           if (user == null) {
             return const Center(
               child: Text('Please log in to view your profile'),
@@ -65,10 +84,10 @@ class ProfileScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       // Avatar
-                      UserAvatar(
-                        user: user,
-                        radius: 50,
-                      ).animate().fadeIn(duration: 500.ms).scale(
+                      UserAvatar(user: user, radius: 50)
+                          .animate()
+                          .fadeIn(duration: 500.ms)
+                          .scale(
                             begin: const Offset(0.8, 0.8),
                             end: const Offset(1, 1),
                             duration: 500.ms,
@@ -78,19 +97,18 @@ class ProfileScreen extends StatelessWidget {
                       // Name
                       Text(
                         user.fullName,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
                       const SizedBox(height: 4),
                       // Email
                       Text(
                         user.email,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: isDark
-                                  ? AppColors.textSecondaryDark
-                                  : AppColors.textSecondaryLight,
-                            ),
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondaryLight,
+                        ),
                       ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
                       const SizedBox(height: 12),
                       // Role badge
@@ -137,103 +155,105 @@ class ProfileScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildInfoCard(
-                        context,
-                        title: 'Academic Info',
-                        icon: Icons.school_rounded,
-                        children: [
-                          _buildInfoRow(context, 'Branch', user.branch),
-                          _buildInfoRow(context, 'Year', user.year),
-                        ],
-                      ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideY(
-                            begin: 0.05,
-                            end: 0,
-                            duration: 400.ms,
-                          ),
-                      const SizedBox(height: 16),
-                      _buildInfoCard(
-                        context,
-                        title: 'Bio',
-                        icon: Icons.info_outline_rounded,
-                        children: [
-                          Text(
-                            user.bio.isEmpty ? 'No bio added yet' : user.bio,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: user.bio.isEmpty
-                                      ? AppColors.textTertiaryLight
-                                      : null,
-                                  fontStyle: user.bio.isEmpty
-                                      ? FontStyle.italic
-                                      : null,
-                                ),
-                          ),
-                        ],
-                      ).animate().fadeIn(delay: 400.ms, duration: 400.ms).slideY(
-                            begin: 0.05,
-                            end: 0,
-                            duration: 400.ms,
-                          ),
-                      const SizedBox(height: 16),
-                      _buildInfoCard(
-                        context,
-                        title: 'Skills',
-                        icon: Icons.code_rounded,
-                        children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: user.skills.map((skill) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? AppColors.primaryBlue.withValues(alpha: 0.2)
-                                      : AppColors.primaryBlueLight.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  skill,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: isDark
-                                        ? AppColors.primaryBlueLight
-                                        : AppColors.primaryBlue,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ).animate().fadeIn(delay: 500.ms, duration: 400.ms).slideY(
-                            begin: 0.05,
-                            end: 0,
-                            duration: 400.ms,
-                          ),
-                      const SizedBox(height: 16),
-                      _buildInfoCard(
-                        context,
-                        title: 'Account Info',
-                        icon: Icons.account_circle_rounded,
-                        children: [
-                          _buildInfoRow(
                             context,
-                            'Member since',
-                            user.createdAt.formattedDate,
-                          ),
-                          _buildInfoRow(
+                            title: 'Academic Info',
+                            icon: Icons.school_rounded,
+                            children: [
+                              _buildInfoRow(context, 'Branch', user.branch),
+                              _buildInfoRow(context, 'Year', user.year),
+                            ],
+                          )
+                          .animate()
+                          .fadeIn(delay: 300.ms, duration: 400.ms)
+                          .slideY(begin: 0.05, end: 0, duration: 400.ms),
+                      const SizedBox(height: 16),
+                      _buildInfoCard(
                             context,
-                            'Last updated',
-                            user.updatedAt.formattedDate,
-                          ),
-                        ],
-                      ).animate().fadeIn(delay: 600.ms, duration: 400.ms).slideY(
-                            begin: 0.05,
-                            end: 0,
-                            duration: 400.ms,
-                          ),
+                            title: 'Bio',
+                            icon: Icons.info_outline_rounded,
+                            children: [
+                              Text(
+                                user.bio.isEmpty
+                                    ? 'No bio added yet'
+                                    : user.bio,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: user.bio.isEmpty
+                                          ? AppColors.textTertiaryLight
+                                          : null,
+                                      fontStyle: user.bio.isEmpty
+                                          ? FontStyle.italic
+                                          : null,
+                                    ),
+                              ),
+                            ],
+                          )
+                          .animate()
+                          .fadeIn(delay: 400.ms, duration: 400.ms)
+                          .slideY(begin: 0.05, end: 0, duration: 400.ms),
+                      const SizedBox(height: 16),
+                      _buildInfoCard(
+                            context,
+                            title: 'Skills',
+                            icon: Icons.code_rounded,
+                            children: [
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: user.skills.map((skill) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? AppColors.primaryBlue.withValues(
+                                              alpha: 0.2,
+                                            )
+                                          : AppColors.primaryBlueLight
+                                                .withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Text(
+                                      skill,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isDark
+                                            ? AppColors.primaryBlueLight
+                                            : AppColors.primaryBlue,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          )
+                          .animate()
+                          .fadeIn(delay: 500.ms, duration: 400.ms)
+                          .slideY(begin: 0.05, end: 0, duration: 400.ms),
+                      const SizedBox(height: 16),
+                      _buildInfoCard(
+                            context,
+                            title: 'Account Info',
+                            icon: Icons.account_circle_rounded,
+                            children: [
+                              _buildInfoRow(
+                                context,
+                                'Member since',
+                                user.createdAt.formattedDate,
+                              ),
+                              _buildInfoRow(
+                                context,
+                                'Last updated',
+                                user.updatedAt.formattedDate,
+                              ),
+                            ],
+                          )
+                          .animate()
+                          .fadeIn(delay: 600.ms, duration: 400.ms)
+                          .slideY(begin: 0.05, end: 0, duration: 400.ms),
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -261,17 +281,13 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: AppColors.primaryBlue,
-                ),
+                Icon(icon, size: 20, color: AppColors.primaryBlue),
                 const SizedBox(width: 8),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -285,7 +301,7 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildInfoRow(BuildContext context, String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -294,16 +310,48 @@ class ProfileScreen extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isDark
-                      ? AppColors.textSecondaryDark
-                      : AppColors.textSecondaryLight,
-                ),
+              color: isDark
+                  ? AppColors.textSecondaryDark
+                  : AppColors.textSecondaryLight,
+            ),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSignOutDialog(BuildContext context) {
+    // Capture references before showing dialog to avoid context issues
+    final authProvider = context.read<AuthProvider>();
+    final router = GoRouter.of(context);
+    
+    showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext); // Close the dialog
+              // Sign out and navigate to login using captured references
+              await authProvider.signOut();
+              router.go('/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Sign Out'),
           ),
         ],
       ),
@@ -356,36 +404,17 @@ class ProfileScreen extends StatelessWidget {
               ),
               const Divider(),
               ListTile(
-                leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+                leading: const Icon(
+                  Icons.logout_rounded,
+                  color: AppColors.error,
+                ),
                 title: const Text(
                   'Sign Out',
                   style: TextStyle(color: AppColors.error),
                 ),
                 onTap: () async {
-                  Navigator.pop(context);
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Sign Out'),
-                      content: const Text('Are you sure you want to sign out?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.error,
-                          ),
-                          child: const Text('Sign Out'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed == true && context.mounted) {
-                    context.read<AuthProvider>().signOut();
-                  }
+                  Navigator.pop(context); // Close bottom sheet first
+                  _showSignOutDialog(context);
                 },
               ),
               const SizedBox(height: 16),

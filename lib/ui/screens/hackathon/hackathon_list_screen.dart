@@ -23,7 +23,10 @@ class _HackathonListScreenState extends State<HackathonListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadHackathons();
+    // Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadHackathons();
+    });
   }
 
   @override
