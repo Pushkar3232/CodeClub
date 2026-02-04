@@ -6,6 +6,8 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
 import '../screens/chat/chat_list_screen.dart';
 import '../screens/chat/chat_screen.dart';
+import '../screens/chat/community_chat_screen.dart';
+import '../screens/chat/create_group_screen.dart';
 import '../screens/hackathon/hackathon_list_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/members/find_members_screen.dart';
@@ -140,6 +142,18 @@ class AppRouter {
             isGroupChat: isGroupChat,
           );
         },
+      ),
+      // Community chat routes
+      GoRoute(
+        path: '/community',
+        name: 'community',
+        builder: (context, state) => const CommunityChatScreen(),
+      ),
+      // Create group route
+      GoRoute(
+        path: '/create-group',
+        name: 'create-group',
+        builder: (context, state) => const CreateGroupScreen(),
       ),
       // Hackathon routes
       GoRoute(

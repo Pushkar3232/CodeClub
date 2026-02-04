@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
+import '../../../data/models/chat_model.dart';
 import '../../../data/models/message_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/user_service.dart';
@@ -60,52 +61,79 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadChatData() async {
+    final chatProvider = context.read<ChatProvider>();
+    final authProvider = context.read<AuthProvider>();
+    final currentUserId = authProvider.currentUserId;
+    
+    if (currentUserId == null) return;
+
+    // First try to get the chat from existing chats
+    ChatModel? chat;
+    try {
+      chat = chatProvider.chats.firstWhere(
+        (c) => c.id == widget.chatId,
+      );
+    } catch (e) {
+      // Chat not found in loaded chats, will try from service
+      chat = null;
+    }
+
+    // If not found, try to get it directly from the service
+    if (chat == null) {
+      try {
+        chat = await chatProvider.getChatById(widget.chatId);
+      } catch (e) {
+        print('Error loading chat: $e');
+        return;
+      }
+    }
+
+    if (chat == null) {
+      print('Chat not found: ${widget.chatId}');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Chat not found'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
+    print('Found chat: ${chat.id} with ${chat.participantIds.length} participants');
+
+    // Select this chat in the provider
+    await chatProvider.selectChat(chat);
+    
+    // Load chat title for private chats
     if (!widget.isGroupChat && widget.title.isEmpty) {
-      // Load other user for 1-1 chat
-      final chatProvider = context.read<ChatProvider>();
-      final authProvider = context.read<AuthProvider>();
-      final currentUserId = authProvider.currentUserId;
+      final otherUserId = chat.participantIds.firstWhere(
+        (id) => id != currentUserId,
+        orElse: () => '',
+      );
       
-      if (currentUserId != null) {
-        final chat = chatProvider.chats.firstWhere(
-          (c) => c.id == widget.chatId,
-          orElse: () => throw Exception('Chat not found'),
-        );
-        
-        final otherUserId = chat.participantIds.firstWhere(
-          (id) => id != currentUserId,
-          orElse: () => '',
-        );
-        
-        if (otherUserId.isNotEmpty) {
-          final user = await _userService.getUserById(otherUserId);
-          if (user != null && mounted) {
-            setState(() {
-              _chatTitle = user.fullName;
-              _usersCache[user.uid] = user;
-            });
-          }
+      if (otherUserId.isNotEmpty) {
+        final user = await _userService.getUserById(otherUserId);
+        if (user != null && mounted) {
+          setState(() {
+            _chatTitle = user.fullName;
+            _usersCache[user.uid] = user;
+          });
         }
       }
     }
   }
 
   void _listenToMessages() {
-    final chatProvider = context.read<ChatProvider>();
-    
-    _messagesSubscription = chatProvider.getMessagesStream(widget.chatId).listen(
-      (messages) {
-        if (mounted) {
-          setState(() {
-            _messages = messages;
-            _isLoading = false;
-          });
-          
-          // Scroll to bottom when new messages arrive
-          _scrollToBottom();
-        }
-      },
-    );
+    // Since we're using ChatProvider's selectChat method,
+    // we'll listen to the provider's messages directly in the build method
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   void _scrollToBottom() {
@@ -169,59 +197,73 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // Messages list
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? const Center(
-                        child: EmptyStateWidget(
-                          icon: Icons.chat_bubble_outline_rounded,
-                          title: 'No messages yet',
-                          subtitle: 'Send a message to start the conversation',
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final message = _messages[index];
-                          final currentUserId =
-                              context.read<AuthProvider>().currentUserId;
-                          final isMe = message.senderId == currentUserId;
-                          
-                          // Check if we should show date separator
-                          final showDate = index == 0 ||
-                              !_isSameDay(
-                                _messages[index - 1].createdAt,
-                                message.createdAt,
+      body: Consumer<ChatProvider>(
+        builder: (context, chatProvider, _) {
+          final messages = chatProvider.messages;
+          
+          // Scroll to bottom when messages change
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (messages.isNotEmpty && _messages.length != messages.length) {
+              _scrollToBottom();
+            }
+            _messages = messages; // Update local messages for comparison
+          });
+          
+          return Column(
+            children: [
+              // Messages list
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : messages.isEmpty
+                        ? const Center(
+                            child: EmptyStateWidget(
+                              icon: Icons.chat_bubble_outline_rounded,
+                              title: 'No messages yet',
+                              subtitle: 'Send a message to start the conversation',
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(16),
+                            itemCount: messages.length,
+                            itemBuilder: (context, index) {
+                              final message = messages[index];
+                              final currentUserId =
+                                  context.read<AuthProvider>().currentUserId;
+                              final isMe = message.senderId == currentUserId;
+                              
+                              // Check if we should show date separator
+                              final showDate = index == 0 ||
+                                  !_isSameDay(
+                                    messages[index - 1].createdAt,
+                                    message.createdAt,
+                                  );
+                              
+                              return Column(
+                                children: [
+                                  if (showDate)
+                                    _DateSeparator(date: message.createdAt),
+                                  _MessageBubble(
+                                    message: message,
+                                    isMe: isMe,
+                                    showSenderName:
+                                        widget.isGroupChat && !isMe,
+                                    getUserFn: _getUser,
+                                  ).animate().fadeIn(duration: 200.ms),
+                                ],
                               );
-                          
-                          return Column(
-                            children: [
-                              if (showDate)
-                                _DateSeparator(date: message.createdAt),
-                              _MessageBubble(
-                                message: message,
-                                isMe: isMe,
-                                showSenderName:
-                                    widget.isGroupChat && !isMe,
-                                getUserFn: _getUser,
-                              ).animate().fadeIn(duration: 200.ms),
-                            ],
-                          );
-                        },
-                      ),
-          ),
-          // Message input
-          _MessageInput(
-            controller: _messageController,
-            onSend: _sendMessage,
-          ),
-        ],
+                            },
+                          ),
+              ),
+              // Message input
+              _MessageInput(
+                controller: _messageController,
+                onSend: _sendMessage,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
