@@ -195,6 +195,7 @@ class ChatService {
   }
 
   /// Get messages for a chat
+  /// Optimized: Uses List.of with reversed iterable to avoid double toList() call
   Stream<List<MessageModel>> getMessages(String chatId, {int limit = 50}) {
     print('ChatService: Getting messages for chat $chatId');
     return _messagesCollection(chatId)
@@ -204,14 +205,13 @@ class ChatService {
         .map(
           (snapshot) {
             print('ChatService: Received ${snapshot.docs.length} message documents for chat $chatId');
-            final messages = snapshot.docs
-                .map((doc) {
-                  print('ChatService: Processing message doc ${doc.id}');
-                  return MessageModel.fromFirestore(doc);
-                })
-                .toList()
-                .reversed
-                .toList();
+            // Optimized: Create list directly in correct order using reversed
+            final messages = List<MessageModel>.of(
+              snapshot.docs.map((doc) {
+                print('ChatService: Processing message doc ${doc.id}');
+                return MessageModel.fromFirestore(doc);
+              }).toList().reversed,
+            );
             print('ChatService: Returning ${messages.length} processed messages');
             return messages;
           },

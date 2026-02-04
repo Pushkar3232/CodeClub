@@ -24,7 +24,12 @@ class ChatListScreen extends StatefulWidget {
 class _ChatListScreenState extends State<ChatListScreen>
     with SingleTickerProviderStateMixin {
   final UserService _userService = UserService();
-  Map<String, UserModel> _usersCache = {};
+  
+  // Bounded cache to prevent memory bloat - LRU-style with max 50 users
+  static const int _maxCacheSize = 50;
+  final Map<String, UserModel> _usersCache = {};
+  final List<String> _cacheOrder = []; // Track insertion order for LRU eviction
+  
   late TabController _tabController;
 
   @override
@@ -37,6 +42,9 @@ class _ChatListScreenState extends State<ChatListScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    // Clear cache on dispose to free memory
+    _usersCache.clear();
+    _cacheOrder.clear();
     super.dispose();
   }
 
@@ -45,6 +53,25 @@ class _ChatListScreenState extends State<ChatListScreen>
     if (userId != null) {
       context.read<ChatProvider>().listenToChats(userId);
     }
+  }
+  
+  /// Add user to cache with LRU eviction
+  void _addToCache(String userId, UserModel user) {
+    // If already in cache, move to end (most recently used)
+    if (_usersCache.containsKey(userId)) {
+      _cacheOrder.remove(userId);
+      _cacheOrder.add(userId);
+      return;
+    }
+    
+    // Evict oldest if at capacity
+    if (_usersCache.length >= _maxCacheSize) {
+      final oldestUserId = _cacheOrder.removeAt(0);
+      _usersCache.remove(oldestUserId);
+    }
+    
+    _usersCache[userId] = user;
+    _cacheOrder.add(userId);
   }
 
   Future<UserModel?> _getOtherUser(ChatModel chat, String currentUserId) async {
@@ -56,13 +83,16 @@ class _ChatListScreenState extends State<ChatListScreen>
     if (otherUserId.isEmpty) return null;
 
     if (_usersCache.containsKey(otherUserId)) {
+      // Move to end of cache order (most recently used)
+      _cacheOrder.remove(otherUserId);
+      _cacheOrder.add(otherUserId);
       return _usersCache[otherUserId];
     }
 
     try {
       final user = await _userService.getUserById(otherUserId);
       if (user != null) {
-        _usersCache[otherUserId] = user;
+        _addToCache(otherUserId, user);
       }
       return user;
     } catch (e) {

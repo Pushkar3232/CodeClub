@@ -12,6 +12,8 @@ class UserModel {
   final String bio;
   final String? profileImageUrl;
   final String? currentTeamId;
+  final String? linkedInUrl;
+  final String? githubUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isProfileComplete;
@@ -27,6 +29,8 @@ class UserModel {
     required this.bio,
     this.profileImageUrl,
     this.currentTeamId,
+    this.linkedInUrl,
+    this.githubUrl,
     required this.createdAt,
     required this.updatedAt,
     this.isProfileComplete = false,
@@ -47,6 +51,8 @@ class UserModel {
       createdAt: now,
       updatedAt: now,
       isProfileComplete: false,
+      linkedInUrl: null,
+      githubUrl: null,
     );
   }
 
@@ -64,6 +70,8 @@ class UserModel {
       bio: data['bio'] ?? '',
       profileImageUrl: data['profileImageUrl'],
       currentTeamId: data['currentTeamId'],
+      linkedInUrl: data['linkedInUrl'],
+      githubUrl: data['githubUrl'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isProfileComplete: data['isProfileComplete'] ?? false,
@@ -82,6 +90,8 @@ class UserModel {
       'bio': bio,
       'profileImageUrl': profileImageUrl,
       'currentTeamId': currentTeamId,
+      'linkedInUrl': linkedInUrl,
+      'githubUrl': githubUrl,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(DateTime.now()),
       'isProfileComplete': isProfileComplete,
@@ -100,6 +110,8 @@ class UserModel {
     String? bio,
     String? profileImageUrl,
     String? currentTeamId,
+    String? linkedInUrl,
+    String? githubUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isProfileComplete,
@@ -115,6 +127,8 @@ class UserModel {
       bio: bio ?? this.bio,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       currentTeamId: currentTeamId ?? this.currentTeamId,
+      linkedInUrl: linkedInUrl ?? this.linkedInUrl,
+      githubUrl: githubUrl ?? this.githubUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,

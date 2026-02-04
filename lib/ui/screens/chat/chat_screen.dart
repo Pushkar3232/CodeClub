@@ -9,6 +9,7 @@ import '../../../data/models/chat_model.dart';
 import '../../../data/models/message_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/user_service.dart';
+import '../../../data/services/notification_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/chat_provider.dart';
 import '../../widgets/loading_widgets.dart';
@@ -34,12 +35,14 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final UserService _userService = UserService();
+  final NotificationService _notificationService = NotificationService();
   
   Map<String, UserModel> _usersCache = {};
   StreamSubscription? _messagesSubscription;
   List<MessageModel> _messages = [];
   bool _isLoading = true;
   String? _chatTitle;
+  int _lastMessageCount = 0;
 
   @override
   void initState() {
@@ -47,6 +50,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _chatTitle = widget.title;
     // Use addPostFrameCallback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeNotifications();
       _loadChatData();
       _listenToMessages();
     });
@@ -58,6 +62,16 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollController.dispose();
     _messagesSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Initialize notification service
+  Future<void> _initializeNotifications() async {
+    try {
+      await _notificationService.initialize();
+      await _notificationService.requestPermission();
+    } catch (e) {
+      print('Error initializing notifications: $e');
+    }
   }
 
   Future<void> _loadChatData() async {
@@ -200,6 +214,29 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Consumer<ChatProvider>(
         builder: (context, chatProvider, _) {
           final messages = chatProvider.messages;
+          final currentUserId = context.read<AuthProvider>().currentUserId;
+          
+          // Show notification when new message arrives
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (messages.isNotEmpty && messages.length > _lastMessageCount) {
+              final newMessage = messages.last;
+              final isCurrentUser = newMessage.senderId == currentUserId;
+
+              // Only show notification for messages from other users
+              if (!isCurrentUser) {
+                final senderUser = _usersCache[newMessage.senderId];
+                final senderName = senderUser?.fullName ?? 'Unknown User';
+
+                _notificationService.showMessageNotification(
+                  chatId: widget.chatId,
+                  senderName: senderName,
+                  messageContent: newMessage.content,
+                  senderImage: senderUser?.profileImageUrl,
+                );
+              }
+              _lastMessageCount = messages.length;
+            }
+          });
           
           // Scroll to bottom when messages change
           WidgetsBinding.instance.addPostFrameCallback((_) {

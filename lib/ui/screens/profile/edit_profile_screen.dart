@@ -20,6 +20,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _bioController;
+  late TextEditingController _linkedInController;
+  late TextEditingController _githubController;
   
   String? _selectedBranch;
   String? _selectedYear;
@@ -32,6 +34,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = context.read<AuthProvider>().currentUser;
     _nameController = TextEditingController(text: user?.fullName ?? '');
     _bioController = TextEditingController(text: user?.bio ?? '');
+    _linkedInController = TextEditingController(text: user?.linkedInUrl ?? '');
+    _githubController = TextEditingController(text: user?.githubUrl ?? '');
     _selectedBranch = user?.branch;
     _selectedYear = user?.year;
     _selectedRole = user?.role;
@@ -42,6 +46,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _bioController.dispose();
+    _linkedInController.dispose();
+    _githubController.dispose();
     super.dispose();
   }
 
@@ -60,6 +66,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       role: _selectedRole ?? '',
       skills: _selectedSkills,
       bio: _bioController.text.trim(),
+      linkedInUrl: _linkedInController.text.trim().isEmpty ? null : _linkedInController.text.trim(),
+      githubUrl: _githubController.text.trim().isEmpty ? null : _githubController.text.trim(),
       updatedAt: DateTime.now(),
     );
 
@@ -258,6 +266,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 maxLines: 4,
                 maxLength: 200,
                 validator: Validators.validateBio,
+              ),
+              const SizedBox(height: 24),
+              // Social links section
+              Text(
+                'Social Links',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Add your LinkedIn and GitHub profiles (optional)',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              // LinkedIn URL
+              CustomTextField(
+                controller: _linkedInController,
+                label: 'LinkedIn Profile (Optional)',
+                hint: 'https://linkedin.com/in/yourprofile',
+                keyboardType: TextInputType.url,
+                prefixIcon: const Icon(Icons.link_outlined),
+              ),
+              const SizedBox(height: 20),
+              // GitHub URL
+              CustomTextField(
+                controller: _githubController,
+                label: 'GitHub Profile (Optional)',
+                hint: 'https://github.com/yourusername',
+                keyboardType: TextInputType.url,
+                prefixIcon: const Icon(Icons.link_outlined),
               ),
               const SizedBox(height: 32),
               // Save button

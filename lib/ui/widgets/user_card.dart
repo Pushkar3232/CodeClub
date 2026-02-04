@@ -160,12 +160,11 @@ class UserProfileCard extends StatelessWidget {
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).slideX(
-          begin: 0.05,
-          end: 0,
-          duration: 300.ms,
-          curve: Curves.easeOut,
-        );
+    );
+    // Removed per-item animations - they create excessive AnimationControllers
+    // when used in ListView.builder, causing performance issues.
+    // Consider using flutter_staggered_animations at the list level instead
+    // for smoother list animations.
   }
 }
 

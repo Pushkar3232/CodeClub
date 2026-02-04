@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../data/models/team_model.dart';
@@ -17,6 +18,10 @@ class TeamProvider extends ChangeNotifier {
   List<TeamRequestModel> _outgoingRequests = [];
   bool _isLoading = false;
   String? _errorMessage;
+  
+  // Stream subscription management to prevent memory leaks
+  StreamSubscription? _incomingRequestsSubscription;
+  StreamSubscription? _outgoingRequestsSubscription;
 
   // Getters
   TeamModel? get currentTeam => _currentTeam;
@@ -179,7 +184,9 @@ class TeamProvider extends ChangeNotifier {
 
   /// Listen to incoming requests
   void listenToIncomingRequests(String userId) {
-    _teamService.getIncomingRequests(userId).listen((requests) {
+    // Cancel existing subscription to prevent memory leak
+    _incomingRequestsSubscription?.cancel();
+    _incomingRequestsSubscription = _teamService.getIncomingRequests(userId).listen((requests) {
       _incomingRequests = requests;
       _safeNotifyListeners();
     });
@@ -187,10 +194,19 @@ class TeamProvider extends ChangeNotifier {
 
   /// Listen to outgoing requests
   void listenToOutgoingRequests(String userId) {
-    _teamService.getOutgoingRequests(userId).listen((requests) {
+    // Cancel existing subscription to prevent memory leak
+    _outgoingRequestsSubscription?.cancel();
+    _outgoingRequestsSubscription = _teamService.getOutgoingRequests(userId).listen((requests) {
       _outgoingRequests = requests;
       _safeNotifyListeners();
     });
+  }
+
+  @override
+  void dispose() {
+    _incomingRequestsSubscription?.cancel();
+    _outgoingRequestsSubscription?.cancel();
+    super.dispose();
   }
 
   /// Clear error

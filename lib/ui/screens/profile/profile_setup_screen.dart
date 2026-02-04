@@ -22,6 +22,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
+  final _linkedInController = TextEditingController();
+  final _githubController = TextEditingController();
   
   String? _selectedBranch;
   String? _selectedYear;
@@ -33,6 +35,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   void dispose() {
     _nameController.dispose();
     _bioController.dispose();
+    _linkedInController.dispose();
+    _githubController.dispose();
     super.dispose();
   }
 
@@ -63,6 +67,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         role: _selectedRole ?? '',
         skills: _selectedSkills,
         bio: _bioController.text.trim(),
+        linkedInUrl: _linkedInController.text.trim().isEmpty ? null : _linkedInController.text.trim(),
+        githubUrl: _githubController.text.trim().isEmpty ? null : _githubController.text.trim(),
         isProfileComplete: true,
         updatedAt: DateTime.now(),
       );
@@ -456,6 +462,47 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           maxLength: 200,
           validator: Validators.validateBio,
         ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(
+              begin: 0.1,
+              end: 0,
+              duration: 400.ms,
+            ),
+        const SizedBox(height: 24),
+        // Social links section
+        Text(
+          'Social Links (Optional)',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ).animate().fadeIn(delay: 250.ms, duration: 400.ms),
+        const SizedBox(height: 12),
+        Text(
+          'Add your LinkedIn and GitHub profiles to help teammates connect with you',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondaryLight,
+              ),
+        ).animate().fadeIn(delay: 275.ms, duration: 400.ms),
+        const SizedBox(height: 16),
+        // LinkedIn URL
+        CustomTextField(
+          controller: _linkedInController,
+          label: 'LinkedIn Profile (Optional)',
+          hint: 'https://linkedin.com/in/yourprofile',
+          keyboardType: TextInputType.url,
+          prefixIcon: const Icon(Icons.link_outlined),
+        ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideY(
+              begin: 0.1,
+              end: 0,
+              duration: 400.ms,
+            ),
+        const SizedBox(height: 20),
+        // GitHub URL
+        CustomTextField(
+          controller: _githubController,
+          label: 'GitHub Profile (Optional)',
+          hint: 'https://github.com/yourusername',
+          keyboardType: TextInputType.url,
+          prefixIcon: const Icon(Icons.link_outlined),
+        ).animate().fadeIn(delay: 350.ms, duration: 400.ms).slideY(
               begin: 0.1,
               end: 0,
               duration: 400.ms,

@@ -75,6 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 120,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(24),
+                            // Light background in dark mode, transparent in light mode
+                            color: isDark ? Colors.grey[900] : Colors.transparent,
                             boxShadow: [
                               BoxShadow(
                                 color: AppColors.primaryBlue.withValues(alpha: 0.2),
@@ -83,9 +85,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ],
                           ),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            fit: BoxFit.contain,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.contain,
+                              // For dark mode, ensure logo is visible
+                              color: isDark ? null : null,
+                              colorBlendMode: BlendMode.darken,
+                            ),
                           ),
                         ).animate().fadeIn(duration: 500.ms).scale(
                               begin: const Offset(0.8, 0.8),

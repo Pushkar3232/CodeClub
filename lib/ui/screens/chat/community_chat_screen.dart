@@ -6,7 +6,7 @@ import '../../../data/models/chat_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/chat_provider.dart';
 import '../../widgets/loading_widgets.dart';
-import 'chat_screen.dart';
+import 'community_broadcast_screen.dart';
 
 /// Community chat screen - shows all community chats and allows creating new ones
 class CommunityChatScreen extends StatefulWidget {
@@ -102,10 +102,8 @@ class _CommunityChatScreenState extends State<CommunityChatScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ChatScreen(
-                                chatId: community.id,
-                                title: community.groupName ?? 'Community',
-                                isGroupChat: true,
+                              builder: (_) => CommunityBroadcastScreen(
+                                community: community,
                               ),
                             ),
                           );
@@ -319,10 +317,8 @@ class _CreateCommunityDialogState extends State<_CreateCommunityDialog> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatScreen(
-            chatId: chat.id,
-            title: chat.groupName ?? 'Community',
-            isGroupChat: true,
+          builder: (_) => CommunityBroadcastScreen(
+            community: chat,
           ),
         ),
       );

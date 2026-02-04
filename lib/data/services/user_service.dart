@@ -99,6 +99,7 @@ class UserService {
   }
 
   /// Search users by name or skill
+  /// Optimized: Pre-computes lowercase query once, uses Set for O(1) skill lookup
   Future<List<UserModel>> searchUsers({
     String? query,
     String? skill,
@@ -111,33 +112,41 @@ class UserService {
       // This is a simple approach; for production, consider using Algolia or similar
       final users = await getAllUsers(excludeUserId: excludeUserId);
       
+      // Pre-compute lowercase values once (O(1) instead of O(n))
+      final queryLower = query?.toLowerCase();
+      final skillLower = skill?.toLowerCase();
+      final roleLower = role?.toLowerCase();
+      final yearLower = year?.toLowerCase();
+      
       return users.where((user) {
-        // Filter by query (name search)
-        if (query != null && query.isNotEmpty) {
-          final queryLower = query.toLowerCase();
-          if (!user.fullName.toLowerCase().contains(queryLower) &&
-              !user.email.toLowerCase().contains(queryLower)) {
+        // Filter by query (name search) - use pre-computed lowercase
+        if (queryLower != null && queryLower.isNotEmpty) {
+          final nameLower = user.fullName.toLowerCase();
+          final emailLower = user.email.toLowerCase();
+          if (!nameLower.contains(queryLower) &&
+              !emailLower.contains(queryLower)) {
             return false;
           }
         }
         
-        // Filter by skill
-        if (skill != null && skill.isNotEmpty) {
-          if (!user.skills.any((s) => s.toLowerCase() == skill.toLowerCase())) {
+        // Filter by skill - convert skills to lowercase Set for O(1) lookup
+        if (skillLower != null && skillLower.isNotEmpty) {
+          final skillsLowerSet = user.skills.map((s) => s.toLowerCase()).toSet();
+          if (!skillsLowerSet.contains(skillLower)) {
             return false;
           }
         }
         
         // Filter by role
-        if (role != null && role.isNotEmpty) {
-          if (user.role.toLowerCase() != role.toLowerCase()) {
+        if (roleLower != null && roleLower.isNotEmpty) {
+          if (user.role.toLowerCase() != roleLower) {
             return false;
           }
         }
         
         // Filter by year
-        if (year != null && year.isNotEmpty) {
-          if (user.year.toLowerCase() != year.toLowerCase()) {
+        if (yearLower != null && yearLower.isNotEmpty) {
+          if (user.year.toLowerCase() != yearLower) {
             return false;
           }
         }

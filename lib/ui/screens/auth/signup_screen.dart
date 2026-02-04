@@ -22,6 +22,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _linkedInController = TextEditingController();
+  final _githubController = TextEditingController();
   bool _agreeToTerms = false;
 
   @override
@@ -29,6 +31,8 @@ class _SignupScreenState extends State<SignupScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _linkedInController.dispose();
+    _githubController.dispose();
     super.dispose();
   }
 
@@ -160,6 +164,51 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     textInputAction: TextInputAction.done,
                   ).animate().fadeIn(delay: 400.ms, duration: 500.ms).slideY(
+                        begin: 0.1,
+                        end: 0,
+                        duration: 500.ms,
+                      ),
+                  const SizedBox(height: 24),
+                  // Optional social links section
+                  Text(
+                    'Social Links (Optional)',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ).animate().fadeIn(delay: 450.ms, duration: 500.ms),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Add your LinkedIn and GitHub profiles to help teammates find you',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondaryLight,
+                        ),
+                  ).animate().fadeIn(delay: 475.ms, duration: 500.ms),
+                  const SizedBox(height: 16),
+                  // LinkedIn URL field
+                  CustomTextField(
+                    controller: _linkedInController,
+                    label: 'LinkedIn Profile (Optional)',
+                    hint: 'https://linkedin.com/in/yourprofile',
+                    keyboardType: TextInputType.url,
+                    prefixIcon: const Icon(Icons.link_outlined),
+                    textInputAction: TextInputAction.next,
+                  ).animate().fadeIn(delay: 500.ms, duration: 500.ms).slideY(
+                        begin: 0.1,
+                        end: 0,
+                        duration: 500.ms,
+                      ),
+                  const SizedBox(height: 20),
+                  // GitHub URL field
+                  CustomTextField(
+                    controller: _githubController,
+                    label: 'GitHub Profile (Optional)',
+                    hint: 'https://github.com/yourusername',
+                    keyboardType: TextInputType.url,
+                    prefixIcon: const Icon(Icons.link_outlined),
+                    textInputAction: TextInputAction.done,
+                  ).animate().fadeIn(delay: 550.ms, duration: 500.ms).slideY(
                         begin: 0.1,
                         end: 0,
                         duration: 500.ms,

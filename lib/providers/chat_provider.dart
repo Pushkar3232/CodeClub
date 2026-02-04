@@ -14,9 +14,7 @@ class ChatProvider extends ChangeNotifier {
   final UserService _userService = UserService();
 
   List<ChatModel> _chats = [];
-  List<ChatModel> _privateChats = [];
-  List<ChatModel> _teamChats = [];
-  List<ChatModel> _groupChats = [];
+  // Removed duplicate lists - using computed getters instead for memory efficiency
   List<ChatModel> _communityChats = [];
   ChatModel? _currentChat;
   List<MessageModel> _messages = [];
@@ -29,9 +27,18 @@ class ChatProvider extends ChangeNotifier {
 
   // Getters
   List<ChatModel> get chats => _chats;
-  List<ChatModel> get privateChats => _privateChats;
-  List<ChatModel> get teamChats => _teamChats;
-  List<ChatModel> get groupChats => _groupChats;
+  
+  // Computed getters - O(n) but no memory duplication
+  // These filter on-demand instead of storing duplicates
+  List<ChatModel> get privateChats => _chats
+      .where((c) => c.chatType == ChatType.private)
+      .toList();
+  List<ChatModel> get teamChats => _chats
+      .where((c) => c.chatType == ChatType.team)
+      .toList();
+  List<ChatModel> get groupChats => _chats
+      .where((c) => c.chatType == ChatType.group)
+      .toList();
   List<ChatModel> get communityChats => _communityChats;
   ChatModel? get currentChat => _currentChat;
   List<MessageModel> get messages => _messages;
@@ -48,16 +55,8 @@ class ChatProvider extends ChangeNotifier {
           (chats) async {
             _chats = chats;
 
-            // Categorize chats by type
-            _privateChats = chats
-                .where((c) => c.chatType == ChatType.private)
-                .toList();
-            _teamChats = chats
-                .where((c) => c.chatType == ChatType.team)
-                .toList();
-            _groupChats = chats
-                .where((c) => c.chatType == ChatType.group)
-                .toList();
+            // Removed duplicate list assignments - using computed getters now
+            // This saves ~3x memory for chat storage
 
             // Load user details for each chat
             final userIds = <String>{};

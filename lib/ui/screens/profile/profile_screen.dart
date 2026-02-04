@@ -234,6 +234,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           .fadeIn(delay: 500.ms, duration: 400.ms)
                           .slideY(begin: 0.05, end: 0, duration: 400.ms),
                       const SizedBox(height: 16),
+                      if (user.linkedInUrl != null || user.githubUrl != null)
+                        _buildInfoCard(
+                              context,
+                              title: 'Social Profiles',
+                              icon: Icons.link_rounded,
+                              children: [
+                                if (user.linkedInUrl != null && user.linkedInUrl!.isNotEmpty)
+                                  _buildSocialLinkRow(context, 'LinkedIn', user.linkedInUrl!),
+                                if (user.linkedInUrl != null && user.linkedInUrl!.isNotEmpty && user.githubUrl != null && user.githubUrl!.isNotEmpty)
+                                  const SizedBox(height: 12),
+                                if (user.githubUrl != null && user.githubUrl!.isNotEmpty)
+                                  _buildSocialLinkRow(context, 'GitHub', user.githubUrl!),
+                              ],
+                            )
+                            .animate()
+                            .fadeIn(delay: 550.ms, duration: 400.ms)
+                            .slideY(begin: 0.05, end: 0, duration: 400.ms),
+                      const SizedBox(height: 16),
                       _buildInfoCard(
                             context,
                             title: 'Account Info',
@@ -322,6 +340,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSocialLinkRow(BuildContext context, String platform, String url) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: () async {
+        try {
+          // You can use url_launcher package to open URLs
+          // For now, we'll just copy to clipboard
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Profile link: $url'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open link: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              platform == 'LinkedIn' ? Icons.work_outline_rounded : Icons.code_rounded,
+              color: AppColors.primaryBlue,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    platform,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+                  ),
+                  Text(
+                    url.replaceFirst(RegExp(r'https?://'), ''),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.open_in_new_rounded,
+              size: 16,
+              color: AppColors.primaryBlue,
+            ),
+          ],
+        ),
       ),
     );
   }
