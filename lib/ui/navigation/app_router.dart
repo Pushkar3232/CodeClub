@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../screens/admin/admin_applications_screen.dart';
+import '../screens/admin/admin_dashboard_screen.dart';
+import '../screens/admin/admin_hackathon_form_screen.dart';
+import '../screens/admin/admin_hackathon_list_screen.dart';
+import '../screens/admin/admin_students_screen.dart';
+import '../screens/admin/admin_teams_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
@@ -8,7 +14,9 @@ import '../screens/chat/chat_list_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/chat/community_chat_screen.dart';
 import '../screens/chat/create_group_screen.dart';
+import '../screens/hackathon/hackathon_apply_screen.dart';
 import '../screens/hackathon/hackathon_list_screen.dart';
+import '../screens/hackathon/my_applications_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/members/find_members_screen.dart';
 import '../screens/members/team_requests_screen.dart';
@@ -18,6 +26,7 @@ import '../screens/profile/profile_setup_screen.dart';
 import '../screens/team/create_team_screen.dart';
 import '../screens/team/join_team_screen.dart';
 import '../screens/team/team_dashboard_screen.dart';
+import '../../data/models/hackathon_model.dart';
 
 /// App router configuration
 class AppRouter {
@@ -45,12 +54,16 @@ class AppRouter {
         return '/login';
       }
 
-      // If logged in and on auth page, redirect to home
+      // If logged in and on auth page, redirect based on role
       if (isLoggedIn && isLoggingIn) {
         // Check if profile is complete
         final user = authProvider.currentUser;
         if (user != null && !user.isProfileComplete) {
           return '/profile-setup';
+        }
+        // Role-based redirect: admin goes to admin dashboard
+        if (user != null && user.role == 'admin') {
+          return '/admin/dashboard';
         }
         return '/home';
       }
@@ -160,6 +173,73 @@ class AppRouter {
         path: '/hackathons',
         name: 'hackathons',
         builder: (context, state) => const HackathonListScreen(),
+      ),
+      // Student: Apply for hackathon
+      GoRoute(
+        path: '/hackathon-apply',
+        name: 'hackathon-apply',
+        builder: (context, state) {
+          final hackathon = state.extra as HackathonModel;
+          return HackathonApplyScreen(hackathon: hackathon);
+        },
+      ),
+      // Student: My applications
+      GoRoute(
+        path: '/my-applications',
+        name: 'my-applications',
+        builder: (context, state) => const MyApplicationsScreen(),
+      ),
+
+      // ==================== ADMIN ROUTES ====================
+      GoRoute(
+        path: '/admin/dashboard',
+        name: 'admin-dashboard',
+        builder: (context, state) => const AdminDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathons',
+        name: 'admin-hackathons',
+        builder: (context, state) => const AdminHackathonListScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathons/add',
+        name: 'admin-hackathon-add',
+        builder: (context, state) => const AdminHackathonFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathons/edit',
+        name: 'admin-hackathon-edit',
+        builder: (context, state) {
+          final hackathon = state.extra as HackathonModel;
+          return AdminHackathonFormScreen(hackathon: hackathon);
+        },
+      ),
+      GoRoute(
+        path: '/admin/applications',
+        name: 'admin-applications',
+        builder: (context, state) => const AdminApplicationsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathon-applications/:hackathonId',
+        name: 'admin-hackathon-applications',
+        builder: (context, state) {
+          final hackathonId = state.pathParameters['hackathonId']!;
+          final title = state.extra as String?;
+          return AdminApplicationsScreen(
+            hackathonId: hackathonId,
+            hackathonTitle: title,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/admin/students',
+        name: 'admin-students',
+        builder: (context, state) => const AdminStudentsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/teams',
+        name: 'admin-teams',
+        builder: (context, state) => const AdminTeamsScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

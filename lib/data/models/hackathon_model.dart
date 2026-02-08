@@ -19,6 +19,7 @@ class HackathonModel {
   final bool isActive;
   final DateTime createdAt;
   final List<String>? rules;
+  final String? createdBy;
 
   HackathonModel({
     required this.id,
@@ -38,6 +39,7 @@ class HackathonModel {
     this.isActive = true,
     required this.createdAt,
     this.rules,
+    this.createdBy,
   });
 
   /// Create from Firestore document
@@ -61,6 +63,7 @@ class HackathonModel {
       isActive: data['isActive'] ?? true,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       rules: (data['rules'] as List<dynamic>?)?.cast<String>(),
+      createdBy: data['createdBy'],
     );
   }
 
@@ -83,6 +86,7 @@ class HackathonModel {
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
       'rules': rules,
+      'createdBy': createdBy,
     };
   }
 
@@ -105,6 +109,7 @@ class HackathonModel {
     bool? isActive,
     DateTime? createdAt,
     List<String>? rules,
+    String? createdBy,
   }) {
     return HackathonModel(
       id: id ?? this.id,
@@ -124,6 +129,7 @@ class HackathonModel {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       rules: rules ?? this.rules,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 

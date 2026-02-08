@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../data/models/hackathon_model.dart';
 import '../../../providers/hackathon_provider.dart';
@@ -44,6 +45,13 @@ class _HackathonListScreenState extends State<HackathonListScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Hackathons'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.assignment_outlined),
+            tooltip: 'My Applications',
+            onPressed: () => context.push('/my-applications'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

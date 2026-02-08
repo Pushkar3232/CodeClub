@@ -6,9 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
+import 'data/services/admin_init_service.dart';
 import 'firebase_options.dart';
+import 'providers/admin_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/connectivity_provider.dart';
 import 'providers/hackathon_provider.dart';
 import 'providers/team_provider.dart';
 import 'providers/theme_provider.dart';
@@ -23,6 +26,16 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print('Firebase initialized successfully');
+
+    // Initialize admin account (runs once)
+    try {
+      final adminInitialized = await AdminInitService().initializeAdminAccount();
+      if (adminInitialized) {
+        AdminInitService.printAdminCredentials();
+      }
+    } catch (e) {
+      print('⚠️  Admin initialization error: $e');
+    }
   } catch (e) {
     print('Firebase initialization error: $e');
     print('Running without Firebase - some features may not work');
@@ -54,6 +67,8 @@ class CodeClubApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // Connectivity provider
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
         // Theme provider
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         // Auth provider
@@ -64,6 +79,8 @@ class CodeClubApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         // Hackathon provider
         ChangeNotifierProvider(create: (_) => HackathonProvider()),
+        // Admin provider
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],
       child: const _AppContent(),
     );
@@ -80,11 +97,62 @@ class _AppContent extends StatefulWidget {
 class _AppContentState extends State<_AppContent> {
   late final AuthProvider _authProvider;
   late final AppRouter _appRouter;
+  bool _hasShownNoInternetDialog = false;
 
   @override
   void initState() {
     super.initState();
-    // We'll initialize in didChangeDependencies
+    // Schedule the connectivity check after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkInternetConnection();
+    });
+  }
+
+  /// Check internet connection and show dialog if offline
+  void _checkInternetConnection() {
+    final connectivityProvider = context.read<ConnectivityProvider>();
+    
+    if (!connectivityProvider.isConnected && !_hasShownNoInternetDialog) {
+      _hasShownNoInternetDialog = true;
+      _showNoInternetDialog();
+    }
+  }
+
+  /// Show dialog when internet is not available
+  void _showNoInternetDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.wifi_off, color: Colors.orange, size: 28),
+            SizedBox(width: 12),
+            Text('No Internet Connection'),
+          ],
+        ),
+        content: const Text(
+          'Please check your internet connection. Some features may not work properly without internet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _hasShownNoInternetDialog = false;
+            },
+            child: const Text('OK'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _checkInternetConnection();
+              Navigator.pop(context);
+              _hasShownNoInternetDialog = false;
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -118,6 +186,56 @@ class _AppContentState extends State<_AppContent> {
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
             routerConfig: _appRouter.router,
+            builder: (context, child) {
+              return Consumer<ConnectivityProvider>(
+                builder: (context, connectivityProvider, _) {
+                  return Stack(
+                    children: [
+                      child!,
+                      // Show internet connection status overlay
+                      if (!connectivityProvider.isConnected)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            color: Colors.orange.shade700,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: SafeArea(
+                              bottom: false,
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.wifi_off,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'No Internet Connection',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              );
+            },
           );
         } catch (e) {
           // Fallback UI in case of routing issues

@@ -54,10 +54,32 @@ class AuthService {
       // Create user document in Firestore
       if (credential.user != null) {
         final user = UserModel.empty(credential.user!.uid, email);
-        await _firestore
-            .collection('users')
-            .doc(credential.user!.uid)
-            .set(user.toFirestore(), SetOptions(merge: true));
+        try {
+          await _firestore
+              .collection('users')
+              .doc(credential.user!.uid)
+              .set(user.toFirestore(), SetOptions(merge: true));
+        } catch (e) {
+          final errorMsg = e.toString().toLowerCase();
+          // Check if it's a network error
+          if (errorMsg.contains('network') || 
+              errorMsg.contains('unreachable') || 
+              errorMsg.contains('timeout') ||
+              errorMsg.contains('internet') ||
+              errorMsg.contains('connection')) {
+            await credential.user!.delete();
+            throw FirebaseAuthException(
+              code: 'network-request-failed',
+              message: 'Network error: $e',
+            );
+          }
+          // If Firestore fails for other reasons, delete the created user account
+          await credential.user!.delete();
+          throw FirebaseAuthException(
+            code: 'signup-failed',
+            message: 'Failed to create user profile: $e',
+          );
+        }
       }
 
       return credential;
@@ -184,6 +206,14 @@ class FirebaseAuthException implements Exception {
         return 'Too many attempts. Please try again later';
       case 'network-request-failed':
         return AppConstants.networkError;
+      case 'signup-failed':
+        // Check if it's a Firestore permission error
+        if (message.contains('permission') || message.contains('Permission')) {
+          return 'Unable to create account profile. Please check your internet connection and try again.';
+        }
+        return 'Failed to create account. Please try again.';
+      case 'operation-not-allowed':
+        return 'Account creation is not enabled. Please contact support.';
       default:
         return AppConstants.unknownError;
     }
