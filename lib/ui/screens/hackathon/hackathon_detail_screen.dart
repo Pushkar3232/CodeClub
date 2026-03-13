@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/hackathon_model.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/chat_provider.dart';
 import '../../../providers/hackathon_provider.dart';
 import '../../../providers/team_provider.dart';
 import '../../widgets/buttons.dart';
@@ -348,10 +350,10 @@ class HackathonDetailScreen extends StatelessWidget {
                     child: PrimaryButton(
                       text: currentTeam != null
                           ? 'Register Team'
-                          : 'Create Team First',
+                          : 'Create Team',
                       onPressed: currentTeam != null
                           ? () => _registerTeam(context)
-                          : null,
+                          : () => _createTeamAndFindMembers(context),
                       isLoading: hackathonProvider.isLoading,
                     ),
                   ),
@@ -389,8 +391,78 @@ class HackathonDetailScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _createTeamAndFindMembers(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    final teamProvider = context.read<TeamProvider>();
+    final chatProvider = context.read<ChatProvider>();
+    final hackathonProvider = context.read<HackathonProvider>();
+
+    final userId = authProvider.currentUserId;
+    if (userId == null) {
+      return;
+    }
+
+    final fullName = authProvider.currentUser?.fullName.trim();
+    final firstName = (fullName != null && fullName.isNotEmpty)
+        ? fullName.split(' ').first
+        : 'My';
+    final autoTeamName = '$firstName ${hackathon.title} Team';
+
+    final created = await teamProvider.createTeam(
+      name: autoTeamName,
+      leaderId: userId,
+      hackathonName: hackathon.title,
+      description: 'Auto-created team for ${hackathon.title}',
+      maxSize: hackathon.maxTeamSize,
+    );
+
+    if (!created) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(teamProvider.errorMessage ?? 'Failed to create team'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final team = teamProvider.currentTeam;
+    if (team == null) {
+      return;
+    }
+
+    await chatProvider.getOrCreateTeamChat(team.id, team.name);
+
+    final canRegisterNow = team.memberIds.length >= hackathon.minTeamSize &&
+        team.memberIds.length <= hackathon.maxTeamSize;
+
+    if (canRegisterNow) {
+      await hackathonProvider.registerTeam(hackathon.id, team.id);
+    }
+
+    if (context.mounted) {
+      final message = canRegisterNow
+          ? 'Team created, team chat added, and registered for ${hackathon.title}'
+          : 'Team and team chat created. Add at least ${hackathon.minTeamSize} members, then register.';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      context.push('/find-members');
+    }
+  }
+
   Future<void> _registerTeam(BuildContext context) async {
     final teamProvider = context.read<TeamProvider>();
+    final chatProvider = context.read<ChatProvider>();
     final hackathonProvider = context.read<HackathonProvider>();
     final team = teamProvider.currentTeam;
     
@@ -423,6 +495,7 @@ class HackathonDetailScreen extends StatelessWidget {
       return;
     }
 
+    await chatProvider.getOrCreateTeamChat(team.id, team.name);
     final success = await hackathonProvider.registerTeam(hackathon.id, team.id);
 
     if (context.mounted) {

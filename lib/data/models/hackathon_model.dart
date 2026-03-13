@@ -1,5 +1,62 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum HackathonStatus {
+  draft,
+  published,
+  ongoing,
+  completed,
+  cancelled,
+}
+
+extension HackathonStatusExtension on HackathonStatus {
+  String get value {
+    switch (this) {
+      case HackathonStatus.draft:
+        return 'draft';
+      case HackathonStatus.published:
+        return 'published';
+      case HackathonStatus.ongoing:
+        return 'ongoing';
+      case HackathonStatus.completed:
+        return 'completed';
+      case HackathonStatus.cancelled:
+        return 'cancelled';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case HackathonStatus.draft:
+        return 'Draft';
+      case HackathonStatus.published:
+        return 'Published';
+      case HackathonStatus.ongoing:
+        return 'Ongoing';
+      case HackathonStatus.completed:
+        return 'Completed';
+      case HackathonStatus.cancelled:
+        return 'Cancelled';
+    }
+  }
+}
+
+HackathonStatus hackathonStatusFromString(String? value) {
+  switch (value) {
+    case 'draft':
+      return HackathonStatus.draft;
+    case 'published':
+      return HackathonStatus.published;
+    case 'ongoing':
+      return HackathonStatus.ongoing;
+    case 'completed':
+      return HackathonStatus.completed;
+    case 'cancelled':
+      return HackathonStatus.cancelled;
+    default:
+      return HackathonStatus.published;
+  }
+}
+
 /// Hackathon model for CodeClub
 class HackathonModel {
   final String id;
@@ -19,6 +76,13 @@ class HackathonModel {
   final bool isActive;
   final DateTime createdAt;
   final List<String>? rules;
+  final String createdByAdminId;
+  final String? lastEditedByAdminId;
+  final DateTime? lastEditedAt;
+  final bool isDeleted;
+  final DateTime? deletedAt;
+  final List<String>? tags;
+  final HackathonStatus status;
 
   HackathonModel({
     required this.id,
@@ -38,6 +102,13 @@ class HackathonModel {
     this.isActive = true,
     required this.createdAt,
     this.rules,
+    this.createdByAdminId = '',
+    this.lastEditedByAdminId,
+    this.lastEditedAt,
+    this.isDeleted = false,
+    this.deletedAt,
+    this.tags,
+    this.status = HackathonStatus.published,
   });
 
   /// Create from Firestore document
@@ -61,6 +132,13 @@ class HackathonModel {
       isActive: data['isActive'] ?? true,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       rules: (data['rules'] as List<dynamic>?)?.cast<String>(),
+      createdByAdminId: data['createdByAdminId'] ?? '',
+      lastEditedByAdminId: data['lastEditedByAdminId'],
+      lastEditedAt: (data['lastEditedAt'] as Timestamp?)?.toDate(),
+      isDeleted: data['isDeleted'] ?? false,
+      deletedAt: (data['deletedAt'] as Timestamp?)?.toDate(),
+      tags: (data['tags'] as List<dynamic>?)?.cast<String>(),
+      status: hackathonStatusFromString(data['status']),
     );
   }
 
@@ -83,6 +161,14 @@ class HackathonModel {
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
       'rules': rules,
+      'createdByAdminId': createdByAdminId,
+      'lastEditedByAdminId': lastEditedByAdminId,
+      'lastEditedAt':
+          lastEditedAt != null ? Timestamp.fromDate(lastEditedAt!) : null,
+      'isDeleted': isDeleted,
+      'deletedAt': deletedAt != null ? Timestamp.fromDate(deletedAt!) : null,
+      'tags': tags,
+      'status': status.value,
     };
   }
 
@@ -105,6 +191,13 @@ class HackathonModel {
     bool? isActive,
     DateTime? createdAt,
     List<String>? rules,
+    String? createdByAdminId,
+    String? lastEditedByAdminId,
+    DateTime? lastEditedAt,
+    bool? isDeleted,
+    DateTime? deletedAt,
+    List<String>? tags,
+    HackathonStatus? status,
   }) {
     return HackathonModel(
       id: id ?? this.id,
@@ -124,11 +217,21 @@ class HackathonModel {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       rules: rules ?? this.rules,
+      createdByAdminId: createdByAdminId ?? this.createdByAdminId,
+      lastEditedByAdminId: lastEditedByAdminId ?? this.lastEditedByAdminId,
+      lastEditedAt: lastEditedAt ?? this.lastEditedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
+      tags: tags ?? this.tags,
+      status: status ?? this.status,
     );
   }
 
   /// Check if registration is open
-  bool get isRegistrationOpen => DateTime.now().isBefore(registrationDeadline);
+  bool get isRegistrationOpen =>
+      status != HackathonStatus.cancelled &&
+      status != HackathonStatus.completed &&
+      DateTime.now().isBefore(registrationDeadline);
 
   /// Check if hackathon is upcoming
   bool get isUpcoming => DateTime.now().isBefore(startDate);
@@ -139,6 +242,12 @@ class HackathonModel {
 
   /// Check if hackathon has ended
   bool get hasEnded => DateTime.now().isAfter(endDate);
+
+  bool get isVisibleToStudents =>
+      !isDeleted &&
+      (status == HackathonStatus.published ||
+          status == HackathonStatus.ongoing ||
+          status == HackathonStatus.completed);
 
   /// Get total registrations count
   int get totalRegistrations => 

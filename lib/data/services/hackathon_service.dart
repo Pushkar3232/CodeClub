@@ -16,12 +16,12 @@ class HackathonService {
   Future<List<HackathonModel>> getAllHackathons() async {
     try {
       final snapshot = await _hackathonsCollection
-          .where('isActive', isEqualTo: true)
           .orderBy('startDate', descending: false)
           .get();
 
       return snapshot.docs
           .map((doc) => HackathonModel.fromFirestore(doc))
+          .where((h) => h.isVisibleToStudents)
           .toList();
     } catch (e) {
       rethrow;
@@ -32,14 +32,9 @@ class HackathonService {
   Future<List<HackathonModel>> getUpcomingHackathons() async {
     try {
       final now = DateTime.now();
-      final snapshot = await _hackathonsCollection
-          .where('isActive', isEqualTo: true)
-          .where('startDate', isGreaterThan: Timestamp.fromDate(now))
-          .orderBy('startDate', descending: false)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => HackathonModel.fromFirestore(doc))
+      final all = await getAllHackathons();
+      return all
+          .where((h) => h.startDate.isAfter(now))
           .toList();
     } catch (e) {
       rethrow;
@@ -76,11 +71,11 @@ class HackathonService {
   /// Stream of hackathons
   Stream<List<HackathonModel>> getHackathonsStream() {
     return _hackathonsCollection
-        .where('isActive', isEqualTo: true)
         .orderBy('startDate', descending: false)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => HackathonModel.fromFirestore(doc))
+            .where((h) => h.isVisibleToStudents)
             .toList());
   }
 

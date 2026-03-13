@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../data/services/admin_service.dart';
+import '../admin/screens/admin_dashboard_screen.dart';
+import '../admin/screens/admin_hackathon_create_screen.dart';
+import '../admin/screens/admin_hackathon_detail_screen.dart';
+import '../admin/screens/admin_hackathon_edit_screen.dart';
+import '../admin/screens/admin_hackathon_list_screen.dart';
+import '../admin/screens/admin_login_screen.dart';
+import '../../data/models/hackathon_model.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
@@ -22,21 +30,45 @@ import '../screens/team/team_dashboard_screen.dart';
 /// App router configuration
 class AppRouter {
   final AuthProvider authProvider;
+  final AdminService _adminService = AdminService();
 
   AppRouter(this.authProvider);
 
   late final GoRouter router = GoRouter(
     refreshListenable: _AuthStateNotifier(authProvider),
     initialLocation: '/login',
-    redirect: (context, state) {
+    redirect: (context, state) async {
       final isLoggedIn = authProvider.authState == AuthState.authenticated;
+      final isAdminPath = state.matchedLocation.startsWith('/admin');
+      final isAdminLogin = state.matchedLocation == '/admin/login';
       final isLoggingIn =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
-          state.matchedLocation == '/forgot-password';
+          state.matchedLocation == '/forgot-password' ||
+          isAdminLogin;
 
       // If still initializing, don't redirect yet
       if (authProvider.authState == AuthState.initial) {
+        return null;
+      }
+
+      if (isAdminPath) {
+        if (isAdminLogin) {
+          if (!isLoggedIn) {
+            return null;
+          }
+          final isAdmin = await _adminService.isCurrentUserAdmin();
+          return isAdmin ? '/admin/dashboard' : null;
+        }
+
+        if (!isLoggedIn) {
+          return '/admin/login';
+        }
+
+        final isAdmin = await _adminService.isCurrentUserAdmin();
+        if (!isAdmin) {
+          return '/admin/login';
+        }
         return null;
       }
 
@@ -160,6 +192,43 @@ class AppRouter {
         path: '/hackathons',
         name: 'hackathons',
         builder: (context, state) => const HackathonListScreen(),
+      ),
+      // Admin routes
+      GoRoute(
+        path: '/admin/login',
+        name: 'admin-login',
+        builder: (context, state) => const AdminLoginScreen(),
+      ),
+      GoRoute(
+        path: '/admin/dashboard',
+        name: 'admin-dashboard',
+        builder: (context, state) => const AdminDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathons',
+        name: 'admin-hackathon-list',
+        builder: (context, state) => const AdminHackathonListScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathons/create',
+        name: 'admin-hackathon-create',
+        builder: (context, state) => const AdminHackathonCreateScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathons/edit',
+        name: 'admin-hackathon-edit',
+        builder: (context, state) {
+          final hackathon = state.extra as HackathonModel;
+          return AdminHackathonEditScreen(hackathon: hackathon);
+        },
+      ),
+      GoRoute(
+        path: '/admin/hackathons/detail',
+        name: 'admin-hackathon-detail',
+        builder: (context, state) {
+          final hackathon = state.extra as HackathonModel;
+          return AdminHackathonDetailScreen(hackathon: hackathon);
+        },
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

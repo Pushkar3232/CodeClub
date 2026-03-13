@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
 
@@ -10,6 +11,8 @@ import '../models/message_model.dart';
 /// - Community chats (public chats everyone can join)
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
 
   /// Collection references
   CollectionReference<Map<String, dynamic>> get _chatsCollection =>
@@ -65,9 +68,18 @@ class ChatService {
   }) async {
     try {
       // Check if team chat already exists
-      final existingChat = await _chatsCollection
+      Query<Map<String, dynamic>> existingTeamChatQuery = _chatsCollection
           .where('teamId', isEqualTo: teamId)
-          .get();
+          .where('chatType', isEqualTo: ChatType.team.name);
+
+      if (_currentUserId != null) {
+        existingTeamChatQuery = existingTeamChatQuery.where(
+          'participantIds',
+          arrayContains: _currentUserId,
+        );
+      }
+
+      final existingChat = await existingTeamChatQuery.limit(1).get();
 
       if (existingChat.docs.isNotEmpty) {
         return ChatModel.fromFirestore(existingChat.docs.first);
@@ -110,10 +122,18 @@ class ChatService {
   /// Get team chat
   Future<ChatModel?> getTeamChat(String teamId) async {
     try {
-      final snapshot = await _chatsCollection
+      Query<Map<String, dynamic>> teamChatQuery = _chatsCollection
           .where('teamId', isEqualTo: teamId)
-          .limit(1)
-          .get();
+          .where('chatType', isEqualTo: ChatType.team.name);
+
+      if (_currentUserId != null) {
+        teamChatQuery = teamChatQuery.where(
+          'participantIds',
+          arrayContains: _currentUserId,
+        );
+      }
+
+      final snapshot = await teamChatQuery.limit(1).get();
 
       if (snapshot.docs.isNotEmpty) {
         return ChatModel.fromFirestore(snapshot.docs.first);
@@ -316,25 +336,51 @@ class ChatService {
 
   /// Get or create team chat
   Future<ChatModel> getOrCreateTeamChat(String teamId, String teamName) async {
-    // Check if team chat already exists
-    final existingChat = await _firestore
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+    Query<Map<String, dynamic>> query = _firestore
         .collection('chats')
         .where('teamId', isEqualTo: teamId)
-        .where('isGroupChat', isEqualTo: true)
-        .get();
+        .where('isGroupChat', isEqualTo: true);
+
+    // Keep the query compatible with participant-based read rules.
+    if (currentUserId != null) {
+      query = query.where('participantIds', arrayContains: currentUserId);
+    }
+
+    final existingChat = await query.limit(1).get();
 
     if (existingChat.docs.isNotEmpty) {
       return ChatModel.fromFirestore(existingChat.docs.first);
     }
 
-    // Create new team chat
+    final teamDoc = await _firestore.collection('teams').doc(teamId).get();
+    final teamData = teamDoc.data();
+
+    List<String> memberIds = [];
+    String? leaderId;
+
+    if (teamData != null) {
+      memberIds = List<String>.from(teamData['memberIds'] ?? []);
+      leaderId = teamData['leaderId'] as String?;
+    }
+
+    if (currentUserId != null && !memberIds.contains(currentUserId)) {
+      memberIds.add(currentUserId);
+    }
+    if (leaderId != null && !memberIds.contains(leaderId)) {
+      memberIds.add(leaderId);
+    }
+
     final chatData = ChatModel(
       id: '',
-      participantIds: [], // Will be populated when members join
+      participantIds: memberIds,
       teamId: teamId,
       createdAt: DateTime.now(),
       isGroupChat: true,
       groupName: teamName,
+      chatType: ChatType.team,
+      createdBy: leaderId ?? currentUserId,
     );
 
     final docRef = await _firestore
@@ -349,6 +395,7 @@ class ChatService {
       isGroupChat: chatData.isGroupChat,
       groupName: chatData.groupName,
       chatType: chatData.chatType,
+      createdBy: chatData.createdBy,
     );
   }
 

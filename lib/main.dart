@@ -1,4 +1,6 @@
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
+import 'providers/admin_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/hackathon_provider.dart';
 import 'providers/team_provider.dart';
@@ -21,6 +24,11 @@ void main() async {
     // Initialize Firebase with platform-specific options
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await FirebaseAppCheck.instance.activate(
+      androidProvider:
+          kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+      appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
     );
     print('Firebase initialized successfully');
   } catch (e) {
@@ -58,6 +66,8 @@ class CodeClubApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         // Auth provider
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        // Admin provider
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
         // Team provider
         ChangeNotifierProvider(create: (_) => TeamProvider()),
         // Chat provider

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/team_model.dart';
 import '../models/team_request_model.dart';
+import 'chat_service.dart';
 import 'user_service.dart';
 
 /// Team service for CodeClub
@@ -8,6 +9,7 @@ import 'user_service.dart';
 class TeamService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final UserService _userService = UserService();
+  final ChatService _chatService = ChatService();
 
   /// Collection references
   CollectionReference<Map<String, dynamic>> get _teamsCollection =>
@@ -47,6 +49,13 @@ class TeamService {
       
       // Update user's current team
       await _userService.updateUserTeam(leaderId, doc.id);
+
+      // Ensure each team has a dedicated team chat from day one.
+      await _chatService.createTeamChat(
+        teamId: doc.id,
+        groupName: name,
+        memberIds: [leaderId],
+      );
 
       return team;
     } catch (e) {
@@ -127,6 +136,8 @@ class TeamService {
       
       // Update user's current team
       await _userService.updateUserTeam(userId, teamId);
+
+      await _syncTeamChatParticipants(teamId);
     } catch (e) {
       rethrow;
     }
@@ -149,6 +160,8 @@ class TeamService {
       
       // Remove team from user
       await _userService.updateUserTeam(userId, null);
+
+      await _syncTeamChatParticipants(teamId);
     } catch (e) {
       rethrow;
     }
@@ -284,5 +297,24 @@ class TeamService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  Future<void> _syncTeamChatParticipants(String teamId) async {
+    final team = await getTeamById(teamId);
+    if (team == null) {
+      return;
+    }
+
+    final teamChat = await _chatService.getTeamChat(teamId);
+    if (teamChat == null) {
+      await _chatService.createTeamChat(
+        teamId: teamId,
+        groupName: team.name,
+        memberIds: team.memberIds,
+      );
+      return;
+    }
+
+    await _chatService.updateChatParticipants(teamChat.id, team.memberIds);
   }
 }
