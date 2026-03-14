@@ -33,6 +33,7 @@ class AdminHackathonEditScreen extends StatelessWidget {
                 'maxTeamSize': draft.maxTeamSize,
                 'venue': draft.venue,
                 'website': draft.website,
+                'registrationFormUrl': draft.registrationFormUrl,
                 'prizes': draft.prizes,
                 'rules': draft.rules,
                 'tags': draft.tags,

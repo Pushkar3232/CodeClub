@@ -13,7 +13,6 @@ import 'providers/auth_provider.dart';
 import 'providers/admin_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/hackathon_provider.dart';
-import 'providers/team_provider.dart';
 import 'providers/theme_provider.dart';
 import 'ui/navigation/app_router.dart';
 
@@ -68,8 +67,6 @@ class CodeClubApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         // Admin provider
         ChangeNotifierProvider(create: (_) => AdminProvider()),
-        // Team provider
-        ChangeNotifierProvider(create: (_) => TeamProvider()),
         // Chat provider
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         // Hackathon provider

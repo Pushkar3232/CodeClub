@@ -98,16 +98,12 @@ class AdminDashboardStats {
   final int totalTeams;
   final int totalHackathons;
   final int activeHackathons;
-  final int totalRegisteredTeams;
-  final int totalRegisteredIndividuals;
 
   const AdminDashboardStats({
     required this.totalUsers,
     required this.totalTeams,
     required this.totalHackathons,
     required this.activeHackathons,
-    required this.totalRegisteredTeams,
-    required this.totalRegisteredIndividuals,
   });
 
   factory AdminDashboardStats.empty() {
@@ -116,8 +112,6 @@ class AdminDashboardStats {
       totalTeams: 0,
       totalHackathons: 0,
       activeHackathons: 0,
-      totalRegisteredTeams: 0,
-      totalRegisteredIndividuals: 0,
     );
   }
 
@@ -126,17 +120,12 @@ class AdminDashboardStats {
     int? totalTeams,
     int? totalHackathons,
     int? activeHackathons,
-    int? totalRegisteredTeams,
-    int? totalRegisteredIndividuals,
   }) {
     return AdminDashboardStats(
       totalUsers: totalUsers ?? this.totalUsers,
       totalTeams: totalTeams ?? this.totalTeams,
       totalHackathons: totalHackathons ?? this.totalHackathons,
       activeHackathons: activeHackathons ?? this.activeHackathons,
-      totalRegisteredTeams: totalRegisteredTeams ?? this.totalRegisteredTeams,
-      totalRegisteredIndividuals:
-          totalRegisteredIndividuals ?? this.totalRegisteredIndividuals,
     );
   }
 }

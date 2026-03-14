@@ -31,6 +31,7 @@ class _HackathonFormState extends State<HackathonForm> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _venueController;
   late final TextEditingController _websiteController;
+  late final TextEditingController _registrationFormUrlController;
   late final TextEditingController _minTeamController;
   late final TextEditingController _maxTeamController;
   late final TextEditingController _tagsController;
@@ -55,6 +56,7 @@ class _HackathonFormState extends State<HackathonForm> {
     _descriptionController = TextEditingController(text: source?.description ?? '');
     _venueController = TextEditingController(text: source?.venue ?? '');
     _websiteController = TextEditingController(text: source?.website ?? '');
+    _registrationFormUrlController = TextEditingController(text: source?.registrationFormUrl ?? '');
     _minTeamController = TextEditingController(
       text: (source?.minTeamSize ?? 2).toString(),
     );
@@ -86,6 +88,7 @@ class _HackathonFormState extends State<HackathonForm> {
     _descriptionController.dispose();
     _venueController.dispose();
     _websiteController.dispose();
+    _registrationFormUrlController.dispose();
     _minTeamController.dispose();
     _maxTeamController.dispose();
     _tagsController.dispose();
@@ -216,6 +219,26 @@ class _HackathonFormState extends State<HackathonForm> {
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return null;
+                    }
+                    final uri = Uri.tryParse(value.trim());
+                    if (uri == null || (!uri.hasScheme || !uri.hasAuthority)) {
+                      return 'Enter a valid URL';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _registrationFormUrlController,
+                  decoration: const InputDecoration(
+                    labelText: 'Google Form URL (Registration)',
+                    hintText: 'https://forms.google.com/...',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.assignment_rounded),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Registration form URL is required';
                     }
                     final uri = Uri.tryParse(value.trim());
                     if (uri == null || (!uri.hasScheme || !uri.hasAuthority)) {
@@ -407,13 +430,11 @@ class _HackathonFormState extends State<HackathonForm> {
       website: _websiteController.text.trim().isEmpty
           ? null
           : _websiteController.text.trim(),
+      registrationFormUrl: _registrationFormUrlController.text.trim(),
       prizes: _prizeControllers
           .map((c) => c.text.trim())
           .where((v) => v.isNotEmpty)
           .toList(),
-      registeredTeamIds: existing?.registeredTeamIds ?? const <String>[],
-      registeredIndividualIds:
-          existing?.registeredIndividualIds ?? const <String>[],
       isActive: _status == HackathonStatus.published ||
           _status == HackathonStatus.ongoing,
       createdAt: existing?.createdAt ?? DateTime.now(),

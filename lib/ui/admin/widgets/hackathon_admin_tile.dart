@@ -48,7 +48,7 @@ class HackathonAdminTile extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
-            '${hackathon.startDate.formattedDate} | ${hackathon.registeredTeamIds.length} teams',
+            hackathon.startDate.formattedDate,
           ),
         ),
         trailing: PopupMenuButton<String>(

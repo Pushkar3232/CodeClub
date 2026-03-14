@@ -74,9 +74,10 @@ class AdminHackathonDetailScreen extends StatelessWidget {
               value: '${hackathon.minTeamSize}-${hackathon.maxTeamSize}',
             ),
             _Info(
-              label: 'Registrations',
-              value:
-                  '${hackathon.registeredTeamIds.length} teams, ${hackathon.registeredIndividualIds.length} individuals',
+              label: 'Registration Form',
+              value: hackathon.registrationFormUrl.isNotEmpty
+                  ? hackathon.registrationFormUrl
+                  : 'No form URL provided',
             ),
             if (hackathon.prizes.isNotEmpty)
               _Info(label: 'Prizes', value: hackathon.prizes.join('\n')),

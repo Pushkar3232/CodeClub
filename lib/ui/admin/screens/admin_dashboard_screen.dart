@@ -122,11 +122,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                       StatCard(
-                        label: 'Registrations',
-                        icon: Icons.how_to_reg_rounded,
+                        label: 'Total Hackathons',
+                        icon: Icons.event_note_rounded,
                         color: AppColors.info,
-                        value:
-                            '${(stats?.totalRegisteredTeams ?? 0) + (stats?.totalRegisteredIndividuals ?? 0)}',
+                        value: '${stats?.totalHackathons ?? 0}',
                       ),
                     ],
                   ),

@@ -70,9 +70,8 @@ class HackathonModel {
   final int maxTeamSize;
   final String venue;
   final String? website;
+  final String registrationFormUrl;
   final List<String> prizes;
-  final List<String> registeredTeamIds;
-  final List<String> registeredIndividualIds;
   final bool isActive;
   final DateTime createdAt;
   final List<String>? rules;
@@ -96,9 +95,8 @@ class HackathonModel {
     this.maxTeamSize = 4,
     required this.venue,
     this.website,
+    required this.registrationFormUrl,
     this.prizes = const [],
-    this.registeredTeamIds = const [],
-    this.registeredIndividualIds = const [],
     this.isActive = true,
     required this.createdAt,
     this.rules,
@@ -126,9 +124,8 @@ class HackathonModel {
       maxTeamSize: data['maxTeamSize'] ?? 4,
       venue: data['venue'] ?? '',
       website: data['website'],
+      registrationFormUrl: data['registrationFormUrl'] ?? '',
       prizes: (data['prizes'] as List<dynamic>?)?.cast<String>() ?? [],
-      registeredTeamIds: (data['registeredTeamIds'] as List<dynamic>?)?.cast<String>() ?? [],
-      registeredIndividualIds: (data['registeredIndividualIds'] as List<dynamic>?)?.cast<String>() ?? [],
       isActive: data['isActive'] ?? true,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       rules: (data['rules'] as List<dynamic>?)?.cast<String>(),
@@ -155,9 +152,8 @@ class HackathonModel {
       'maxTeamSize': maxTeamSize,
       'venue': venue,
       'website': website,
+      'registrationFormUrl': registrationFormUrl,
       'prizes': prizes,
-      'registeredTeamIds': registeredTeamIds,
-      'registeredIndividualIds': registeredIndividualIds,
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
       'rules': rules,
@@ -185,9 +181,8 @@ class HackathonModel {
     int? maxTeamSize,
     String? venue,
     String? website,
+    String? registrationFormUrl,
     List<String>? prizes,
-    List<String>? registeredTeamIds,
-    List<String>? registeredIndividualIds,
     bool? isActive,
     DateTime? createdAt,
     List<String>? rules,
@@ -211,9 +206,8 @@ class HackathonModel {
       maxTeamSize: maxTeamSize ?? this.maxTeamSize,
       venue: venue ?? this.venue,
       website: website ?? this.website,
+      registrationFormUrl: registrationFormUrl ?? this.registrationFormUrl,
       prizes: prizes ?? this.prizes,
-      registeredTeamIds: registeredTeamIds ?? this.registeredTeamIds,
-      registeredIndividualIds: registeredIndividualIds ?? this.registeredIndividualIds,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       rules: rules ?? this.rules,
@@ -249,20 +243,11 @@ class HackathonModel {
           status == HackathonStatus.ongoing ||
           status == HackathonStatus.completed);
 
-  /// Get total registrations count
-  int get totalRegistrations => 
-      registeredTeamIds.length + registeredIndividualIds.length;
-
-  /// Check if user is registered
-  bool isUserRegistered(String userId) => 
-      registeredIndividualIds.contains(userId);
-
-  /// Check if team is registered
-  bool isTeamRegistered(String teamId) => 
-      registeredTeamIds.contains(teamId);
+  /// Check if hackathon has a valid registration form URL
+  bool get hasRegistrationForm => registrationFormUrl.isNotEmpty;
 
   @override
   String toString() {
-    return 'HackathonModel(id: $id, title: $title, registrations: $totalRegistrations)';
+    return 'HackathonModel(id: $id, title: $title)';
   }
 }

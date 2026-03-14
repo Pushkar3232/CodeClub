@@ -14,18 +14,13 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
 import '../screens/chat/chat_list_screen.dart';
 import '../screens/chat/chat_screen.dart';
-import '../screens/chat/community_chat_screen.dart';
 import '../screens/chat/create_group_screen.dart';
 import '../screens/hackathon/hackathon_list_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/members/find_members_screen.dart';
-import '../screens/members/team_requests_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/profile_setup_screen.dart';
-import '../screens/team/create_team_screen.dart';
-import '../screens/team/join_team_screen.dart';
-import '../screens/team/team_dashboard_screen.dart';
 
 /// App router configuration
 class AppRouter {
@@ -128,27 +123,6 @@ class AppRouter {
         name: 'edit-profile',
         builder: (context, state) => const EditProfileScreen(),
       ),
-      // Team routes
-      GoRoute(
-        path: '/create-team',
-        name: 'create-team',
-        builder: (context, state) => const CreateTeamScreen(),
-      ),
-      GoRoute(
-        path: '/team-dashboard',
-        name: 'team-dashboard',
-        builder: (context, state) => const TeamDashboardScreen(),
-      ),
-      GoRoute(
-        path: '/join-team',
-        name: 'join-team',
-        builder: (context, state) => const JoinTeamScreen(),
-      ),
-      GoRoute(
-        path: '/team-requests',
-        name: 'team-requests',
-        builder: (context, state) => const TeamRequestsScreen(),
-      ),
       // Members routes
       GoRoute(
         path: '/find-members',
@@ -174,12 +148,6 @@ class AppRouter {
             isGroupChat: isGroupChat,
           );
         },
-      ),
-      // Community chat routes
-      GoRoute(
-        path: '/community',
-        name: 'community',
-        builder: (context, state) => const CommunityChatScreen(),
       ),
       // Create group route
       GoRoute(

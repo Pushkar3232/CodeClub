@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/hackathon_model.dart';
-import '../../../providers/auth_provider.dart';
-import '../../../providers/chat_provider.dart';
-import '../../../providers/hackathon_provider.dart';
-import '../../../providers/team_provider.dart';
 import '../../widgets/buttons.dart';
 
 /// Hackathon detail screen
@@ -20,18 +15,6 @@ class HackathonDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final authProvider = context.watch<AuthProvider>();
-    final teamProvider = context.watch<TeamProvider>();
-    final hackathonProvider = context.watch<HackathonProvider>();
-    
-    final currentUserId = authProvider.currentUserId;
-    final currentTeam = teamProvider.currentTeam;
-    
-    final isUserRegistered = currentUserId != null &&
-        hackathon.registeredIndividualIds.contains(currentUserId);
-    final isTeamRegistered = currentTeam != null &&
-        hackathon.registeredTeamIds.contains(currentTeam.id);
-    final isRegistered = isUserRegistered || isTeamRegistered;
 
     return Scaffold(
       body: CustomScrollView(
@@ -270,45 +253,6 @@ class HackathonDetailScreen extends StatelessWidget {
                     }),
                     const SizedBox(height: 24),
                   ],
-                  // Registration status
-                  if (isRegistered)
-                    Card(
-                      margin: EdgeInsets.zero,
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: AppColors.success,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'You\'re Registered!',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.success,
-                                    ),
-                                  ),
-                                  Text(
-                                    isTeamRegistered
-                                        ? 'Your team is registered for this hackathon'
-                                        : 'You are registered as an individual',
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -316,200 +260,69 @@ class HackathonDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: !isRegistered && hackathon.isRegistrationOpen
-          ? Container(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: MediaQuery.of(context).padding.bottom + 16,
-              ),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Register as individual
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _registerIndividual(context),
-                      child: const Text('Solo'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Register as team
-                  Expanded(
-                    flex: 2,
-                    child: PrimaryButton(
-                      text: currentTeam != null
-                          ? 'Register Team'
-                          : 'Create Team',
-                      onPressed: currentTeam != null
-                          ? () => _registerTeam(context)
-                          : () => _createTeamAndFindMembers(context),
-                      isLoading: hackathonProvider.isLoading,
-                    ),
-                  ),
-                ],
-              ),
-            )
+      bottomNavigationBar: hackathon.isRegistrationOpen && hackathon.hasRegistrationForm
+          ? _buildBottomBar(context, isDark)
           : null,
     );
   }
 
-  Future<void> _registerIndividual(BuildContext context) async {
-    final authProvider = context.read<AuthProvider>();
-    final hackathonProvider = context.read<HackathonProvider>();
-    final userId = authProvider.currentUserId;
-    
-    if (userId == null) return;
-
-    final success = await hackathonProvider.registerIndividual(
-      hackathon.id,
-      userId,
-    );
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Successfully registered for ${hackathon.title}'
-                : (hackathonProvider.errorMessage ?? 'Registration failed'),
+  Widget _buildBottomBar(BuildContext context, bool isDark) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).padding.bottom + 16,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+        ],
+      ),
+      child: PrimaryButton(
+        text: 'Apply Now',
+        onPressed: () => _launchFormUrl(context, hackathon.registrationFormUrl),
+        isLoading: false,
+      ),
+    );
   }
 
-  Future<void> _createTeamAndFindMembers(BuildContext context) async {
-    final authProvider = context.read<AuthProvider>();
-    final teamProvider = context.read<TeamProvider>();
-    final chatProvider = context.read<ChatProvider>();
-    final hackathonProvider = context.read<HackathonProvider>();
-
-    final userId = authProvider.currentUserId;
-    if (userId == null) {
-      return;
+  Future<void> _launchFormUrl(BuildContext context, String url) async {
+    String finalUrl = url.trim();
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+      finalUrl = 'https://$finalUrl';
     }
 
-    final fullName = authProvider.currentUser?.fullName.trim();
-    final firstName = (fullName != null && fullName.isNotEmpty)
-        ? fullName.split(' ').first
-        : 'My';
-    final autoTeamName = '$firstName ${hackathon.title} Team';
-
-    final created = await teamProvider.createTeam(
-      name: autoTeamName,
-      leaderId: userId,
-      hackathonName: hackathon.title,
-      description: 'Auto-created team for ${hackathon.title}',
-      maxSize: hackathon.maxTeamSize,
-    );
-
-    if (!created) {
+    final uri = Uri.tryParse(finalUrl);
+    if (uri == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(teamProvider.errorMessage ?? 'Failed to create team'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
+          const SnackBar(content: Text('Invalid registration URL.')),
         );
       }
       return;
     }
 
-    final team = teamProvider.currentTeam;
-    if (team == null) {
-      return;
-    }
-
-    await chatProvider.getOrCreateTeamChat(team.id, team.name);
-
-    final canRegisterNow = team.memberIds.length >= hackathon.minTeamSize &&
-        team.memberIds.length <= hackathon.maxTeamSize;
-
-    if (canRegisterNow) {
-      await hackathonProvider.registerTeam(hackathon.id, team.id);
-    }
-
-    if (context.mounted) {
-      final message = canRegisterNow
-          ? 'Team created, team chat added, and registered for ${hackathon.title}'
-          : 'Team and team chat created. Add at least ${hackathon.minTeamSize} members, then register.';
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-
-      context.push('/find-members');
-    }
-  }
-
-  Future<void> _registerTeam(BuildContext context) async {
-    final teamProvider = context.read<TeamProvider>();
-    final chatProvider = context.read<ChatProvider>();
-    final hackathonProvider = context.read<HackathonProvider>();
-    final team = teamProvider.currentTeam;
-    
-    if (team == null) return;
-
-    // Check team size
-    if (team.memberIds.length < hackathon.minTeamSize) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Your team needs at least ${hackathon.minTeamSize} members',
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        // Fallback to default
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open registration form: $e'),
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: AppColors.warning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    if (team.memberIds.length > hackathon.maxTeamSize) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Your team exceeds the maximum size of ${hackathon.maxTeamSize}',
-          ),
-          backgroundColor: AppColors.warning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    await chatProvider.getOrCreateTeamChat(team.id, team.name);
-    final success = await hackathonProvider.registerTeam(hackathon.id, team.id);
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Team registered for ${hackathon.title}'
-                : (hackathonProvider.errorMessage ?? 'Registration failed'),
-          ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        );
+      }
     }
   }
 }

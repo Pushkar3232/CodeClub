@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 // Removed unused import: flutter_animate
 import 'package:provider/provider.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/user_service.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../providers/team_provider.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../widgets/loading_widgets.dart';
 import '../../widgets/text_fields.dart';
 import '../../widgets/user_card.dart';
@@ -148,33 +147,6 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
     );
   }
 
-  Future<void> _sendTeamRequest(UserModel toUser) async {
-    final authProvider = context.read<AuthProvider>();
-    final teamProvider = context.read<TeamProvider>();
-
-    final currentUserId = authProvider.currentUserId;
-    if (currentUserId == null) return;
-
-    final success = await teamProvider.sendTeamRequest(
-      fromUserId: currentUserId,
-      toUserId: toUser.uid,
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? AppConstants.requestSent
-                : (teamProvider.errorMessage ?? 'Failed to send request'),
-          ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final hasFilters =
@@ -292,7 +264,6 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
                           onMessageTap: () {
                             // TODO: Navigate to chat
                           },
-                          onRequestTap: () => _sendTeamRequest(user),
                         );
                       },
                     ),

@@ -5,8 +5,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../models/admin_model.dart';
 import '../models/hackathon_model.dart';
-import '../models/team_model.dart';
-import '../models/user_model.dart';
 
 class AdminService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -161,8 +159,6 @@ class AdminService {
     final hackathonsSnapshot = snapshots[2];
 
     int activeCount = 0;
-    int registeredTeams = 0;
-    int registeredIndividuals = 0;
 
     for (final doc in hackathonsSnapshot.docs) {
       final model = HackathonModel.fromFirestore(doc);
@@ -173,8 +169,6 @@ class AdminService {
           model.status == HackathonStatus.ongoing) {
         activeCount++;
       }
-      registeredTeams += model.registeredTeamIds.length;
-      registeredIndividuals += model.registeredIndividualIds.length;
     }
 
     return AdminDashboardStats(
@@ -185,8 +179,6 @@ class AdminService {
           .where((h) => !h.isDeleted)
           .length,
       activeHackathons: activeCount,
-      totalRegisteredTeams: registeredTeams,
-      totalRegisteredIndividuals: registeredIndividuals,
     );
   }
 
@@ -329,49 +321,5 @@ class AdminService {
     } catch (_) {
       // Ignore if no banner exists.
     }
-  }
-
-  Future<List<TeamModel>> getRegisteredTeams(String hackathonId) async {
-    final hackathon = await getHackathonById(hackathonId);
-    if (hackathon == null || hackathon.registeredTeamIds.isEmpty) {
-      return <TeamModel>[];
-    }
-
-    final results = <TeamModel>[];
-    for (final chunk in _chunk(hackathon.registeredTeamIds, 10)) {
-      final snapshot = await _firestore
-          .collection('teams')
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get();
-      results.addAll(snapshot.docs.map(TeamModel.fromFirestore));
-    }
-
-    return results;
-  }
-
-  Future<List<UserModel>> getRegisteredIndividuals(String hackathonId) async {
-    final hackathon = await getHackathonById(hackathonId);
-    if (hackathon == null || hackathon.registeredIndividualIds.isEmpty) {
-      return <UserModel>[];
-    }
-
-    final results = <UserModel>[];
-    for (final chunk in _chunk(hackathon.registeredIndividualIds, 10)) {
-      final snapshot = await _firestore
-          .collection('users')
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get();
-      results.addAll(snapshot.docs.map(UserModel.fromFirestore));
-    }
-
-    return results;
-  }
-
-  List<List<String>> _chunk(List<String> values, int size) {
-    final chunks = <List<String>>[];
-    for (int i = 0; i < values.length; i += size) {
-      chunks.add(values.sublist(i, i + size > values.length ? values.length : i + size));
-    }
-    return chunks;
   }
 }
