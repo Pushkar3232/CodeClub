@@ -1,5 +1,62 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum HackathonStatus {
+  draft,
+  published,
+  ongoing,
+  completed,
+  cancelled,
+}
+
+extension HackathonStatusExtension on HackathonStatus {
+  String get value {
+    switch (this) {
+      case HackathonStatus.draft:
+        return 'draft';
+      case HackathonStatus.published:
+        return 'published';
+      case HackathonStatus.ongoing:
+        return 'ongoing';
+      case HackathonStatus.completed:
+        return 'completed';
+      case HackathonStatus.cancelled:
+        return 'cancelled';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case HackathonStatus.draft:
+        return 'Draft';
+      case HackathonStatus.published:
+        return 'Published';
+      case HackathonStatus.ongoing:
+        return 'Ongoing';
+      case HackathonStatus.completed:
+        return 'Completed';
+      case HackathonStatus.cancelled:
+        return 'Cancelled';
+    }
+  }
+}
+
+HackathonStatus hackathonStatusFromString(String? value) {
+  switch (value) {
+    case 'draft':
+      return HackathonStatus.draft;
+    case 'published':
+      return HackathonStatus.published;
+    case 'ongoing':
+      return HackathonStatus.ongoing;
+    case 'completed':
+      return HackathonStatus.completed;
+    case 'cancelled':
+      return HackathonStatus.cancelled;
+    default:
+      return HackathonStatus.published;
+  }
+}
+
 /// Hackathon model for CodeClub
 class HackathonModel {
   final String id;
@@ -13,12 +70,18 @@ class HackathonModel {
   final int maxTeamSize;
   final String venue;
   final String? website;
+  final String registrationFormUrl;
   final List<String> prizes;
-  final List<String> registeredTeamIds;
-  final List<String> registeredIndividualIds;
   final bool isActive;
   final DateTime createdAt;
   final List<String>? rules;
+  final String createdByAdminId;
+  final String? lastEditedByAdminId;
+  final DateTime? lastEditedAt;
+  final bool isDeleted;
+  final DateTime? deletedAt;
+  final List<String>? tags;
+  final HackathonStatus status;
 
   HackathonModel({
     required this.id,
@@ -32,12 +95,18 @@ class HackathonModel {
     this.maxTeamSize = 4,
     required this.venue,
     this.website,
+    required this.registrationFormUrl,
     this.prizes = const [],
-    this.registeredTeamIds = const [],
-    this.registeredIndividualIds = const [],
     this.isActive = true,
     required this.createdAt,
     this.rules,
+    this.createdByAdminId = '',
+    this.lastEditedByAdminId,
+    this.lastEditedAt,
+    this.isDeleted = false,
+    this.deletedAt,
+    this.tags,
+    this.status = HackathonStatus.published,
   });
 
   /// Create from Firestore document
@@ -55,12 +124,18 @@ class HackathonModel {
       maxTeamSize: data['maxTeamSize'] ?? 4,
       venue: data['venue'] ?? '',
       website: data['website'],
+      registrationFormUrl: data['registrationFormUrl'] ?? '',
       prizes: (data['prizes'] as List<dynamic>?)?.cast<String>() ?? [],
-      registeredTeamIds: (data['registeredTeamIds'] as List<dynamic>?)?.cast<String>() ?? [],
-      registeredIndividualIds: (data['registeredIndividualIds'] as List<dynamic>?)?.cast<String>() ?? [],
       isActive: data['isActive'] ?? true,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       rules: (data['rules'] as List<dynamic>?)?.cast<String>(),
+      createdByAdminId: data['createdByAdminId'] ?? '',
+      lastEditedByAdminId: data['lastEditedByAdminId'],
+      lastEditedAt: (data['lastEditedAt'] as Timestamp?)?.toDate(),
+      isDeleted: data['isDeleted'] ?? false,
+      deletedAt: (data['deletedAt'] as Timestamp?)?.toDate(),
+      tags: (data['tags'] as List<dynamic>?)?.cast<String>(),
+      status: hackathonStatusFromString(data['status']),
     );
   }
 
@@ -77,12 +152,19 @@ class HackathonModel {
       'maxTeamSize': maxTeamSize,
       'venue': venue,
       'website': website,
+      'registrationFormUrl': registrationFormUrl,
       'prizes': prizes,
-      'registeredTeamIds': registeredTeamIds,
-      'registeredIndividualIds': registeredIndividualIds,
       'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
       'rules': rules,
+      'createdByAdminId': createdByAdminId,
+      'lastEditedByAdminId': lastEditedByAdminId,
+      'lastEditedAt':
+          lastEditedAt != null ? Timestamp.fromDate(lastEditedAt!) : null,
+      'isDeleted': isDeleted,
+      'deletedAt': deletedAt != null ? Timestamp.fromDate(deletedAt!) : null,
+      'tags': tags,
+      'status': status.value,
     };
   }
 
@@ -99,12 +181,18 @@ class HackathonModel {
     int? maxTeamSize,
     String? venue,
     String? website,
+    String? registrationFormUrl,
     List<String>? prizes,
-    List<String>? registeredTeamIds,
-    List<String>? registeredIndividualIds,
     bool? isActive,
     DateTime? createdAt,
     List<String>? rules,
+    String? createdByAdminId,
+    String? lastEditedByAdminId,
+    DateTime? lastEditedAt,
+    bool? isDeleted,
+    DateTime? deletedAt,
+    List<String>? tags,
+    HackathonStatus? status,
   }) {
     return HackathonModel(
       id: id ?? this.id,
@@ -118,17 +206,26 @@ class HackathonModel {
       maxTeamSize: maxTeamSize ?? this.maxTeamSize,
       venue: venue ?? this.venue,
       website: website ?? this.website,
+      registrationFormUrl: registrationFormUrl ?? this.registrationFormUrl,
       prizes: prizes ?? this.prizes,
-      registeredTeamIds: registeredTeamIds ?? this.registeredTeamIds,
-      registeredIndividualIds: registeredIndividualIds ?? this.registeredIndividualIds,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       rules: rules ?? this.rules,
+      createdByAdminId: createdByAdminId ?? this.createdByAdminId,
+      lastEditedByAdminId: lastEditedByAdminId ?? this.lastEditedByAdminId,
+      lastEditedAt: lastEditedAt ?? this.lastEditedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
+      tags: tags ?? this.tags,
+      status: status ?? this.status,
     );
   }
 
   /// Check if registration is open
-  bool get isRegistrationOpen => DateTime.now().isBefore(registrationDeadline);
+  bool get isRegistrationOpen =>
+      status != HackathonStatus.cancelled &&
+      status != HackathonStatus.completed &&
+      DateTime.now().isBefore(registrationDeadline);
 
   /// Check if hackathon is upcoming
   bool get isUpcoming => DateTime.now().isBefore(startDate);
@@ -140,20 +237,17 @@ class HackathonModel {
   /// Check if hackathon has ended
   bool get hasEnded => DateTime.now().isAfter(endDate);
 
-  /// Get total registrations count
-  int get totalRegistrations => 
-      registeredTeamIds.length + registeredIndividualIds.length;
+  bool get isVisibleToStudents =>
+      !isDeleted &&
+      (status == HackathonStatus.published ||
+          status == HackathonStatus.ongoing ||
+          status == HackathonStatus.completed);
 
-  /// Check if user is registered
-  bool isUserRegistered(String userId) => 
-      registeredIndividualIds.contains(userId);
-
-  /// Check if team is registered
-  bool isTeamRegistered(String teamId) => 
-      registeredTeamIds.contains(teamId);
+  /// Check if hackathon has a valid registration form URL
+  bool get hasRegistrationForm => registrationFormUrl.isNotEmpty;
 
   @override
   String toString() {
-    return 'HackathonModel(id: $id, title: $title, registrations: $totalRegistrations)';
+    return 'HackathonModel(id: $id, title: $title)';
   }
 }

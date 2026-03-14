@@ -21,9 +21,6 @@ class AppConstants {
   
   /// Success messages
   static const String profileSaved = 'Profile saved successfully!';
-  static const String teamCreated = 'Team created successfully!';
-  static const String teamJoined = 'You have joined the team!';
-  static const String requestSent = 'Team request sent!';
   static const String registrationSuccess = 'Registration successful!';
 }
 

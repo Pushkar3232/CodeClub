@@ -19,6 +19,9 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  int _adminTapCount = 0;
+  DateTime? _lastAdminTapAt;
+
   @override
   void initState() {
     super.initState();
@@ -489,6 +492,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
               const Divider(),
+              ListTile(
+                leading: const Icon(Icons.info_outline_rounded),
+                title: const Text('Version 1.0.0'),
+                subtitle: const Text('Tap 5 times quickly for admin access'),
+                onTap: () {
+                  final now = DateTime.now();
+                  final isQuickTap =
+                      _lastAdminTapAt != null &&
+                      now.difference(_lastAdminTapAt!).inMilliseconds < 1400;
+
+                  _lastAdminTapAt = now;
+                  _adminTapCount = isQuickTap ? _adminTapCount + 1 : 1;
+
+                  if (_adminTapCount >= 5) {
+                    _adminTapCount = 0;
+                    Navigator.pop(context);
+                    if (mounted) {
+                      context.go('/admin/login');
+                    }
+                  }
+                },
+              ),
               ListTile(
                 leading: const Icon(
                   Icons.logout_rounded,

@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/user_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/chat_provider.dart';
-import '../../../providers/team_provider.dart';
 
 import '../chat/chat_screen.dart';
 
@@ -106,21 +104,11 @@ class UserDetailScreen extends StatelessWidget {
                   // Action buttons
                   Row(
                     children: [
-                      Expanded(
-                        child: _ActionButton(
-                          icon: Icons.message_rounded,
-                          label: 'Message',
-                          onTap: () => _openChat(context),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _ActionButton(
-                          icon: Icons.person_add_rounded,
-                          label: 'Team Request',
-                          isPrimary: true,
-                          onTap: () => _sendTeamRequest(context),
-                        ),
+                      _ActionButton(
+                        icon: Icons.message_rounded,
+                        label: 'Message',
+                        isPrimary: true,
+                        onTap: () => _openChat(context),
                       ),
                     ],
                   ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
@@ -220,33 +208,6 @@ class UserDetailScreen extends StatelessWidget {
             chatId: chat.id,
             title: user.fullName,
           ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _sendTeamRequest(BuildContext context) async {
-    final authProvider = context.read<AuthProvider>();
-    final teamProvider = context.read<TeamProvider>();
-    final currentUserId = authProvider.currentUserId;
-    
-    if (currentUserId == null) return;
-
-    final success = await teamProvider.sendTeamRequest(
-      fromUserId: currentUserId,
-      toUserId: user.uid,
-    );
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? AppConstants.requestSent
-                : (teamProvider.errorMessage ?? 'Failed to send request'),
-          ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          behavior: SnackBarBehavior.floating,
         ),
       );
     }

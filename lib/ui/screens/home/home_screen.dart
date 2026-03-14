@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../data/models/user_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../chat/chat_list_screen.dart';
 import '../hackathon/hackathon_list_screen.dart';
@@ -157,94 +158,101 @@ class _HomeTabContent extends StatelessWidget {
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _QuickActionCard(
-                                icon: Icons.group_add_rounded,
-                                title: 'Create Team',
-                                color: AppColors.primaryBlue,
-                                onTap: () {
-                                  context.push('/create-team');
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _QuickActionCard(
-                                icon: Icons.search_rounded,
-                                title: 'Find Members',
-                                color: AppColors.secondaryGreen,
-                                onTap: () {
-                                  context.push('/find-members');
-                                },
-                              ),
-                            ),
-                          ],
+                        _QuickActionCard(
+                          icon: Icons.search_rounded,
+                          title: 'Find Members',
+                          color: AppColors.secondaryGreen,
+                          onTap: () {
+                            context.push('/find-members');
+                          },
                         ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _QuickActionCard(
-                                icon: Icons.groups_rounded,
-                                title: 'Join Team',
-                                color: AppColors.warning,
-                                onTap: () {
-                                  context.push('/join-team');
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _QuickActionCard(
-                                icon: Icons.person_add_alt_1_rounded,
-                                title: 'Requests',
-                                color: AppColors.error,
-                                onTap: () {
-                                  context.push('/team-requests');
-                                },
-                              ),
-                            ),
-                          ],
-                        ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
                       ],
                     ),
                   ),
                 ),
-                // My Team section
+                // Profile snapshot
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _ProfileSnapshotCard(user: user)
+                        .animate()
+                        .fadeIn(delay: 180.ms, duration: 400.ms),
+                  ),
+                ),
+                // Explore shortcuts
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'My Team',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                context.push('/team-dashboard');
-                              },
-                              child: const Text('View'),
-                            ),
-                          ],
+                        Text(
+                          'Explore',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 12),
-                        _MyTeamCard(),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final tileWidth =
+                                (constraints.maxWidth - 12) / 2;
+
+                            return Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                SizedBox(
+                                  width: tileWidth,
+                                  child: _DashboardShortcutTile(
+                                    icon: Icons.chat_bubble_outline_rounded,
+                                    title: 'Messages',
+                                    subtitle: 'Open chats',
+                                    color: AppColors.primaryBlue,
+                                    onTap: () => context.push('/chats'),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: tileWidth,
+                                  child: _DashboardShortcutTile(
+                                    icon: Icons.emoji_events_outlined,
+                                    title: 'Hackathons',
+                                    subtitle: 'Browse events',
+                                    color: AppColors.accentOrange,
+                                    onTap: () => context.push('/hackathons'),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: tileWidth,
+                                  child: _DashboardShortcutTile(
+                                    icon: Icons.person_outline_rounded,
+                                    title: 'Profile',
+                                    subtitle: 'View account',
+                                    color: AppColors.secondaryGreen,
+                                    onTap: () => context.push('/profile'),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: tileWidth,
+                                  child: _DashboardShortcutTile(
+                                    icon: Icons.edit_outlined,
+                                    title: 'Edit Profile',
+                                    subtitle: 'Update details',
+                                    color: AppColors.warning,
+                                    onTap: () => context.push('/edit-profile'),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ).animate().fadeIn(delay: 220.ms, duration: 400.ms),
                       ],
-                    ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+                    ),
                   ),
                 ),
                 // Featured hackathons
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -338,51 +346,184 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-/// My team card placeholder
-class _MyTeamCard extends StatelessWidget {
+class _ProfileSnapshotCard extends StatelessWidget {
+  final UserModel? user;
+
+  const _ProfileSnapshotCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isComplete = user?.isProfileComplete == true;
+    final String branch = user?.branch ?? '';
+    final String year = user?.year ?? '';
+    final List<String> skills = user?.skills ?? const [];
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    AppColors.surfaceDark,
+                    AppColors.surfaceDark.withValues(alpha: 0.9),
+                  ]
+                : [
+                    AppColors.primaryBlueLight.withValues(alpha: 0.28),
+                    Colors.white,
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isComplete ? Icons.verified_rounded : Icons.pending_actions,
+                    color: isComplete ? AppColors.success : AppColors.warning,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isComplete ? 'Profile Ready' : 'Complete Your Profile',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (branch.isNotEmpty)
+                    _MetaChip(icon: Icons.school_rounded, text: branch),
+                  if (year.isNotEmpty)
+                    _MetaChip(icon: Icons.calendar_today_rounded, text: year),
+                  _MetaChip(
+                    icon: Icons.code_rounded,
+                    text: '${skills.length} skill${skills.length == 1 ? '' : 's'}',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    context.push(isComplete ? '/profile' : '/profile-setup');
+                  },
+                  icon: Icon(isComplete ? Icons.person_rounded : Icons.edit),
+                  label: Text(isComplete ? 'Open Profile' : 'Finish Setup'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardShortcutTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _DashboardShortcutTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // TODO: Replace with actual team data
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(
-              Icons.group_off_rounded,
-              size: 48,
-              color: isDark
-                  ? AppColors.textSecondaryDark
-                  : AppColors.textSecondaryLight,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No team yet',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Create or join a team to get started',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: isDark
-                    ? AppColors.textSecondaryDark
-                    : AppColors.textSecondaryLight,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                context.push('/create-team');
-              },
-              child: const Text('Create Team'),
-            ),
-          ],
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isDark
+                      ? AppColors.textSecondaryDark
+                      : AppColors.textSecondaryLight,
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _MetaChip({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.primaryBlue.withValues(alpha: 0.2)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primaryBlue),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ],
       ),
     );
   }
