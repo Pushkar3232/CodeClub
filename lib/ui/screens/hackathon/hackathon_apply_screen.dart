@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../data/models/application_model.dart';
 import '../../../data/models/hackathon_model.dart';
-import '../../../providers/admin_provider.dart';
 import '../../../providers/auth_provider.dart';
 
-/// Screen for students to apply for a hackathon (solo or with team)
+/// Screen for students to apply via direct registration form
 class HackathonApplyScreen extends StatefulWidget {
   final HackathonModel hackathon;
 
@@ -19,41 +18,45 @@ class HackathonApplyScreen extends StatefulWidget {
 }
 
 class _HackathonApplyScreenState extends State<HackathonApplyScreen> {
-  bool _applyAsTeam = false;
-  bool _isSubmitting = false;
+  bool _isOpening = false;
 
   Future<void> _submit() async {
     final authProvider = context.read<AuthProvider>();
-    final adminProvider = context.read<AdminProvider>();
     final user = authProvider.currentUser;
     if (user == null) return;
 
-    setState(() => _isSubmitting = true);
+    final formUrl = widget.hackathon.registrationFormUrl.trim();
+    if (formUrl.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration form is not available for this hackathon.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
-    final application = ApplicationModel(
-      id: '',
-      hackathonId: widget.hackathon.id,
-      userId: user.uid,
-      userName: user.fullName,
-      teamId: _applyAsTeam ? user.currentTeamId : null,
-      teamName: null, // Will be resolved on server / admin side
-      appliedAt: DateTime.now(),
-    );
-
-    final success = await adminProvider.submitApplication(application);
-    setState(() => _isSubmitting = false);
+    setState(() => _isOpening = true);
+    final uri = Uri.tryParse(formUrl);
+    var success = false;
+    if (uri != null) {
+      success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+    if (mounted) {
+      setState(() => _isOpening = false);
+    }
 
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Application submitted successfully!')),
+          const SnackBar(content: Text('Opened registration form.')),
         );
         context.pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text(adminProvider.errorMessage ?? 'Failed to submit'),
+          const SnackBar(
+            content: Text('Could not open registration form URL.'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -65,11 +68,9 @@ class _HackathonApplyScreenState extends State<HackathonApplyScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = context.watch<AuthProvider>().currentUser;
-    final hasTeam =
-        user?.currentTeamId != null && user!.currentTeamId!.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Apply for Hackathon')),
+      appBar: AppBar(title: const Text('Register for Hackathon')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -119,11 +120,11 @@ class _HackathonApplyScreenState extends State<HackathonApplyScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.people_outline_rounded,
+                    Icon(Icons.link_rounded,
                         size: 14, color: Colors.grey[500]),
                     const SizedBox(width: 6),
                     Text(
-                      'Team size: ${widget.hackathon.minTeamSize} – ${widget.hackathon.maxTeamSize}',
+                      'Registration via Google Form',
                       style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                     ),
                   ],
@@ -162,33 +163,20 @@ class _HackathonApplyScreenState extends State<HackathonApplyScreen> {
 
           const SizedBox(height: 24),
 
-          // Application type
-          Text('Application Type',
+          // Registration details
+          Text('Registration Details',
               style: Theme.of(context)
                   .textTheme
                   .titleSmall
                   ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
 
-          RadioListTile<bool>(
-            value: false,
-            groupValue: _applyAsTeam,
-            onChanged: (v) => setState(() => _applyAsTeam = v!),
-            title: const Text('Apply as Individual'),
-            subtitle: const Text('Solo participation'),
-            tileColor: isDark ? AppColors.cardDark : AppColors.cardLight,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          const SizedBox(height: 8),
-          RadioListTile<bool>(
-            value: true,
-            groupValue: _applyAsTeam,
-            onChanged: hasTeam ? (v) => setState(() => _applyAsTeam = v!) : null,
-            title: const Text('Apply with Team'),
-            subtitle: Text(hasTeam
-                ? 'Apply with your current team'
-                : 'You must join or create a team first'),
+          ListTile(
+            leading: const Icon(Icons.open_in_new_rounded),
+            title: const Text('External Form Submission'),
+            subtitle: const Text(
+              'Tap below to open the hackathon Google Form and complete your registration.',
+            ),
             tileColor: isDark ? AppColors.cardDark : AppColors.cardLight,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -200,7 +188,7 @@ class _HackathonApplyScreenState extends State<HackathonApplyScreen> {
           SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _submit,
+              onPressed: _isOpening ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
                 foregroundColor: Colors.white,
@@ -208,14 +196,14 @@ class _HackathonApplyScreenState extends State<HackathonApplyScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: _isSubmitting
+              child: _isOpening
                   ? const SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Submit Application',
+                  : const Text('Open Registration Form',
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             ),

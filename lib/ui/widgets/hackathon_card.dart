@@ -147,11 +147,6 @@ class HackathonCard extends StatelessWidget {
                           icon: Icons.group_rounded,
                           text: '${hackathon.minTeamSize}-${hackathon.maxTeamSize} members',
                         ),
-                        const SizedBox(width: 12),
-                        _InfoChip(
-                          icon: Icons.how_to_reg_rounded,
-                          text: '${hackathon.totalRegistrations} registered',
-                        ),
                       ],
                     ),
                   ],

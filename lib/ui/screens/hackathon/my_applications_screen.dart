@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/application_model.dart';
-import '../../../providers/admin_provider.dart';
-import '../../../providers/auth_provider.dart';
 
 /// Screen for students to view their hackathon application status
 class MyApplicationsScreen extends StatefulWidget {
@@ -25,10 +22,9 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
   }
 
   Future<void> _loadApps() async {
-    final uid = context.read<AuthProvider>().currentUserId;
-    if (uid == null) return;
     setState(() => _isLoading = true);
-    _apps = await context.read<AdminProvider>().getUserApplications(uid);
+    // Application tracking is disabled in the direct Google Form flow.
+    _apps = <ApplicationModel>[];
     setState(() => _isLoading = false);
   }
 
@@ -46,7 +42,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                       Icon(Icons.assignment_outlined,
                           size: 56, color: Colors.grey[400]),
                       const SizedBox(height: 12),
-                      Text("You haven't applied to any hackathons yet",
+                      Text('Applications are now submitted via Google Forms.',
                           style: Theme.of(context).textTheme.bodyLarge),
                     ],
                   ),

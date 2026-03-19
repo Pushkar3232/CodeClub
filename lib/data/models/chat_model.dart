@@ -133,12 +133,6 @@ class ChatModel {
     );
   }
 
-  /// Check if chat is a community chat
-  bool get isCommunity => chatType == ChatType.community;
-
-  /// Check if chat is a team chat
-  bool get isTeamChat => chatType == ChatType.team;
-
   /// Check if chat is a private chat
   bool get isPrivateChat => chatType == ChatType.private;
 

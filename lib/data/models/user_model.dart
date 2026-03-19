@@ -17,6 +17,7 @@ class UserModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isProfileComplete;
+  final bool isAdmin;
 
   UserModel({
     required this.uid,
@@ -34,6 +35,7 @@ class UserModel {
     required this.createdAt,
     required this.updatedAt,
     this.isProfileComplete = false,
+    this.isAdmin = false,
   });
 
   /// Create empty user (for new signups)
@@ -53,6 +55,7 @@ class UserModel {
       isProfileComplete: false,
       linkedInUrl: null,
       githubUrl: null,
+      isAdmin: false,
     );
   }
 
@@ -75,6 +78,7 @@ class UserModel {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isProfileComplete: data['isProfileComplete'] ?? false,
+      isAdmin: data['isAdmin'] ?? false,
     );
   }
 
@@ -95,6 +99,7 @@ class UserModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(DateTime.now()),
       'isProfileComplete': isProfileComplete,
+      'isAdmin': isAdmin,
     };
   }
 
@@ -115,6 +120,7 @@ class UserModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isProfileComplete,
+    bool? isAdmin,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -132,6 +138,7 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
+      isAdmin: isAdmin ?? this.isAdmin,
     );
   }
 

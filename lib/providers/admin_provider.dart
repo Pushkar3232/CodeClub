@@ -1,290 +1,271 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-import '../data/models/application_model.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../data/models/admin_model.dart';
 import '../data/models/hackathon_model.dart';
-import '../data/models/user_model.dart';
-import '../data/models/team_model.dart';
 import '../data/services/admin_service.dart';
 
-/// Admin provider for managing admin state
 class AdminProvider extends ChangeNotifier {
   final AdminService _adminService = AdminService();
 
-  List<HackathonModel> _hackathons = [];
-  List<ApplicationModel> _applications = [];
-  List<UserModel> _students = [];
-  List<TeamModel> _teams = [];
-  Map<String, int> _dashboardStats = {};
+  AdminModel? _currentAdmin;
+  AdminDashboardStats? _dashStats;
+  List<HackathonModel> _hackathons = <HackathonModel>[];
   bool _isLoading = false;
+  bool _isSubmitting = false;
   String? _errorMessage;
+  HackathonStatus? _filterStatus;
+  String _searchQuery = '';
 
-  // Getters
+  AdminModel? get currentAdmin => _currentAdmin;
+  AdminDashboardStats? get dashStats => _dashStats;
   List<HackathonModel> get hackathons => _hackathons;
-  List<ApplicationModel> get applications => _applications;
-  List<UserModel> get students => _students;
-  List<TeamModel> get teams => _teams;
-  Map<String, int> get dashboardStats => _dashboardStats;
   bool get isLoading => _isLoading;
+  bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  HackathonStatus? get filterStatus => _filterStatus;
+  bool get isAuthenticated => _currentAdmin != null;
 
-  List<ApplicationModel> get pendingApplications =>
-      _applications.where((a) => a.isPending).toList();
+  List<HackathonModel> get filteredHackathons {
+    var list = List<HackathonModel>.from(_hackathons);
 
-  // ==================== DASHBOARD ====================
+    if (_filterStatus != null) {
+      list = list.where((h) => h.status == _filterStatus).toList();
+    }
 
-  /// Load dashboard stats
+    if (_searchQuery.trim().isNotEmpty) {
+      final query = _searchQuery.trim().toLowerCase();
+      list = list
+          .where((h) =>
+              h.title.toLowerCase().contains(query) ||
+              h.venue.toLowerCase().contains(query))
+          .toList();
+    }
+
+    return list;
+  }
+
+  Stream<int> get totalUsersStream => _adminService.getTotalUsersStream();
+  Stream<int> get totalTeamsStream => _adminService.getTotalTeamsStream();
+  Stream<int> get activeHackathonsStream => _adminService.getActiveHackathonsStream();
+
+  Future<void> initializeAdminState() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _currentAdmin = await _adminService.getCurrentAdmin();
+      if (_currentAdmin != null) {
+        await Future.wait([loadDashboardStats(), loadAllHackathons()]);
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signInAdmin(String email, String password) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _currentAdmin = await _adminService.signInAdmin(email, password);
+      await Future.wait([loadDashboardStats(), loadAllHackathons()]);
+    } catch (e) {
+      _errorMessage = e.toString();
+      rethrow;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signOutAdmin() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _adminService.signOutAdmin();
+      _currentAdmin = null;
+      _dashStats = null;
+      _hackathons = <HackathonModel>[];
+      _filterStatus = null;
+      _searchQuery = '';
+      _errorMessage = null;
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> loadDashboardStats() async {
+    try {
+      _dashStats = await _adminService.getDashboardStats();
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadAllHackathons({bool includeDeleted = false}) async {
     _isLoading = true;
     _errorMessage = null;
-    _safeNotifyListeners();
+    notifyListeners();
 
     try {
-      _dashboardStats = await _adminService.getDashboardStats();
+      _hackathons = await _adminService.getAllHackathons(
+        includeDeleted: includeDeleted,
+      );
     } catch (e) {
       _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    _safeNotifyListeners();
   }
 
-  // ==================== HACKATHON CRUD ====================
+  Future<void> createHackathon(HackathonModel model, XFile? bannerImage) async {
+    final admin = _currentAdmin;
+    if (admin == null) {
+      throw Exception('Admin session not found. Please sign in again.');
+    }
 
-  /// Load all hackathons for admin
-  Future<void> loadHackathons() async {
-    _isLoading = true;
+    _isSubmitting = true;
     _errorMessage = null;
-    _safeNotifyListeners();
+    notifyListeners();
 
     try {
-      _hackathons = await _adminService.getAllHackathonsAdmin();
-    } catch (e) {
-      _errorMessage = e.toString();
-    }
-
-    _isLoading = false;
-    _safeNotifyListeners();
-  }
-
-  /// Create hackathon
-  Future<bool> createHackathon(HackathonModel hackathon) async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
-
-    try {
-      final created = await _adminService.createHackathon(hackathon);
-      _hackathons.insert(0, created);
-      _isLoading = false;
-      _safeNotifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      _safeNotifyListeners();
-      return false;
-    }
-  }
-
-  /// Update hackathon
-  Future<bool> updateHackathon(HackathonModel hackathon) async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
-
-    try {
-      await _adminService.updateHackathon(hackathon);
-      final index = _hackathons.indexWhere((h) => h.id == hackathon.id);
-      if (index != -1) {
-        _hackathons[index] = hackathon;
-      }
-      _isLoading = false;
-      _safeNotifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      _safeNotifyListeners();
-      return false;
-    }
-  }
-
-  /// Delete hackathon
-  Future<bool> deleteHackathon(String hackathonId) async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
-
-    try {
-      await _adminService.deleteHackathon(hackathonId);
-      _hackathons.removeWhere((h) => h.id == hackathonId);
-      _isLoading = false;
-      _safeNotifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      _safeNotifyListeners();
-      return false;
-    }
-  }
-
-  // ==================== APPLICATIONS ====================
-
-  /// Load all applications
-  Future<void> loadApplications() async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
-
-    try {
-      _applications = await _adminService.getAllApplications();
-    } catch (e) {
-      _errorMessage = e.toString();
-    }
-
-    _isLoading = false;
-    _safeNotifyListeners();
-  }
-
-  /// Load applications for a specific hackathon
-  Future<List<ApplicationModel>> loadApplicationsForHackathon(
-      String hackathonId) async {
-    try {
-      return await _adminService.getApplicationsForHackathon(hackathonId);
-    } catch (e) {
-      _errorMessage = e.toString();
-      _safeNotifyListeners();
-      return [];
-    }
-  }
-
-  /// Approve application
-  Future<bool> approveApplication(
-      String applicationId, String adminUid) async {
-    try {
-      await _adminService.approveApplication(applicationId, adminUid);
-      final index = _applications.indexWhere((a) => a.id == applicationId);
-      if (index != -1) {
-        _applications[index] = _applications[index].copyWith(
-          status: ApplicationStatus.approved,
-          reviewedAt: DateTime.now(),
-          reviewedBy: adminUid,
+      final id = await _adminService.createHackathon(model, admin.uid);
+      if (bannerImage != null) {
+        final imageUrl = await _adminService.uploadHackathonBanner(id, bannerImage);
+        await _adminService.updateHackathon(
+          id,
+          {'imageUrl': imageUrl},
+          admin.uid,
         );
       }
-      _safeNotifyListeners();
-      return true;
+      await Future.wait([loadAllHackathons(), loadDashboardStats()]);
     } catch (e) {
       _errorMessage = e.toString();
-      _safeNotifyListeners();
-      return false;
+      rethrow;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
     }
   }
 
-  /// Reject application
-  Future<bool> rejectApplication(
-      String applicationId, String adminUid, {String? remarks}) async {
+  Future<void> updateHackathon(
+    String id,
+    Map<String, dynamic> data,
+    XFile? newBanner,
+  ) async {
+    final admin = _currentAdmin;
+    if (admin == null) {
+      throw Exception('Admin session not found. Please sign in again.');
+    }
+
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
-      await _adminService.rejectApplication(applicationId, adminUid,
-          remarks: remarks);
-      final index = _applications.indexWhere((a) => a.id == applicationId);
-      if (index != -1) {
-        _applications[index] = _applications[index].copyWith(
-          status: ApplicationStatus.rejected,
-          reviewedAt: DateTime.now(),
-          reviewedBy: adminUid,
-          remarks: remarks,
-        );
+      if (newBanner != null) {
+        final imageUrl = await _adminService.uploadHackathonBanner(id, newBanner);
+        data['imageUrl'] = imageUrl;
       }
-      _safeNotifyListeners();
-      return true;
+
+      await _adminService.updateHackathon(id, data, admin.uid);
+      await Future.wait([loadAllHackathons(), loadDashboardStats()]);
     } catch (e) {
       _errorMessage = e.toString();
-      _safeNotifyListeners();
-      return false;
+      rethrow;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
     }
   }
 
-  // ==================== USERS & TEAMS ====================
+  Future<void> deleteHackathon(String id) async {
+    final admin = _currentAdmin;
+    if (admin == null) {
+      throw Exception('Admin session not found. Please sign in again.');
+    }
 
-  /// Load all students
-  Future<void> loadStudents() async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
+    _isSubmitting = true;
+    notifyListeners();
 
     try {
-      _students = await _adminService.getAllStudents();
+      await _adminService.softDeleteHackathon(id, admin.uid);
+      await Future.wait([loadAllHackathons(), loadDashboardStats()]);
     } catch (e) {
       _errorMessage = e.toString();
+      rethrow;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    _safeNotifyListeners();
   }
 
-  /// Load all teams
-  Future<void> loadTeams() async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
+  Future<void> permanentDeleteHackathon(String id) async {
+    if (_currentAdmin?.role != AdminRole.superadmin) {
+      throw Exception('Only superadmin can permanently delete hackathons.');
+    }
+
+    _isSubmitting = true;
+    notifyListeners();
 
     try {
-      _teams = await _adminService.getAllTeams();
+      await _adminService.permanentlyDeleteHackathon(id);
+      await Future.wait([loadAllHackathons(includeDeleted: true), loadDashboardStats()]);
     } catch (e) {
       _errorMessage = e.toString();
+      rethrow;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    _safeNotifyListeners();
   }
 
-  // ==================== STUDENT-SIDE APPLICATIONS ====================
+  Future<void> toggleStatus(String id, HackathonStatus status) async {
+    final admin = _currentAdmin;
+    if (admin == null) {
+      throw Exception('Admin session not found. Please sign in again.');
+    }
 
-  /// Submit application (student use)
-  Future<bool> submitApplication(ApplicationModel application) async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
+    _isSubmitting = true;
+    notifyListeners();
 
     try {
-      await _adminService.submitApplication(application);
-      _isLoading = false;
-      _safeNotifyListeners();
-      return true;
+      await _adminService.toggleHackathonStatus(id, status, admin.uid);
+      await Future.wait([loadAllHackathons(), loadDashboardStats()]);
     } catch (e) {
       _errorMessage = e.toString();
-      _isLoading = false;
-      _safeNotifyListeners();
-      return false;
+      rethrow;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
     }
   }
 
-  /// Get user's applications
-  Future<List<ApplicationModel>> getUserApplications(String userId) async {
-    try {
-      return await _adminService.getUserApplications(userId);
-    } catch (e) {
-      _errorMessage = e.toString();
-      _safeNotifyListeners();
-      return [];
-    }
+  void setFilter(HackathonStatus? status) {
+    _filterStatus = status;
+    notifyListeners();
   }
 
-  /// Clear error
+  void setSearchQuery(String value) {
+    _searchQuery = value;
+    notifyListeners();
+  }
+
   void clearError() {
     _errorMessage = null;
-    _safeNotifyListeners();
-  }
-
-  /// Safe notify listeners
-  void _safeNotifyListeners() {
-    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
-      notifyListeners();
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        notifyListeners();
-      });
-    }
+    notifyListeners();
   }
 }

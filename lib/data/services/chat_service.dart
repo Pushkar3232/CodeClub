@@ -5,9 +5,7 @@ import '../models/message_model.dart';
 /// Chat service for CodeClub
 /// Handles all chat-related Firestore operations including:
 /// - Private chats (1-on-1)
-/// - Team chats (for hackathon teams)
 /// - Group chats (general groups without hackathon)
-/// - Community chats (public chats everyone can join)
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -56,67 +54,12 @@ class ChatService {
     }
   }
 
-  /// Create a team group chat
-  Future<ChatModel> createTeamChat({
-    required String teamId,
-    required String groupName,
-    required List<String> memberIds,
-    String? hackathonId,
-  }) async {
-    try {
-      // Check if team chat already exists
-      final existingChat = await _chatsCollection
-          .where('teamId', isEqualTo: teamId)
-          .get();
-
-      if (existingChat.docs.isNotEmpty) {
-        return ChatModel.fromFirestore(existingChat.docs.first);
-      }
-
-      // Create new team chat
-      final chatDoc = _chatsCollection.doc();
-      final chat = ChatModel(
-        id: chatDoc.id,
-        participantIds: memberIds,
-        teamId: teamId,
-        hackathonId: hackathonId,
-        createdAt: DateTime.now(),
-        isGroupChat: true,
-        groupName: groupName,
-        chatType: ChatType.team,
-        createdBy: memberIds.isNotEmpty ? memberIds.first : null,
-      );
-
-      await chatDoc.set(chat.toFirestore());
-      return chat;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   /// Get chat by ID
   Future<ChatModel?> getChatById(String chatId) async {
     try {
       final doc = await _chatsCollection.doc(chatId).get();
       if (doc.exists) {
         return ChatModel.fromFirestore(doc);
-      }
-      return null;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Get team chat
-  Future<ChatModel?> getTeamChat(String teamId) async {
-    try {
-      final snapshot = await _chatsCollection
-          .where('teamId', isEqualTo: teamId)
-          .limit(1)
-          .get();
-
-      if (snapshot.docs.isNotEmpty) {
-        return ChatModel.fromFirestore(snapshot.docs.first);
       }
       return null;
     } catch (e) {
@@ -314,44 +257,6 @@ class ChatService {
         );
   }
 
-  /// Get or create team chat
-  Future<ChatModel> getOrCreateTeamChat(String teamId, String teamName) async {
-    // Check if team chat already exists
-    final existingChat = await _firestore
-        .collection('chats')
-        .where('teamId', isEqualTo: teamId)
-        .where('isGroupChat', isEqualTo: true)
-        .get();
-
-    if (existingChat.docs.isNotEmpty) {
-      return ChatModel.fromFirestore(existingChat.docs.first);
-    }
-
-    // Create new team chat
-    final chatData = ChatModel(
-      id: '',
-      participantIds: [], // Will be populated when members join
-      teamId: teamId,
-      createdAt: DateTime.now(),
-      isGroupChat: true,
-      groupName: teamName,
-    );
-
-    final docRef = await _firestore
-        .collection('chats')
-        .add(chatData.toFirestore());
-
-    return ChatModel(
-      id: docRef.id,
-      participantIds: chatData.participantIds,
-      teamId: chatData.teamId,
-      createdAt: chatData.createdAt,
-      isGroupChat: chatData.isGroupChat,
-      groupName: chatData.groupName,
-      chatType: chatData.chatType,
-    );
-  }
-
   /// Get or create private chat
   Future<ChatModel> getOrCreatePrivateChat(
     String user1Id,
@@ -461,92 +366,8 @@ class ChatService {
     }
   }
 
-  // ==================== COMMUNITY CHAT OPERATIONS ====================
-
-  /// Create a community chat (public chat everyone can join)
-  Future<ChatModel> createCommunityChat({
-    required String name,
-    required String creatorId,
-    String? description,
-    String? imageUrl,
-  }) async {
-    try {
-      final chatDoc = _chatsCollection.doc();
-      final chat = ChatModel(
-        id: chatDoc.id,
-        participantIds: [creatorId],
-        createdAt: DateTime.now(),
-        isGroupChat: true,
-        groupName: name,
-        chatType: ChatType.community,
-        groupDescription: description,
-        groupImageUrl: imageUrl,
-        createdBy: creatorId,
-      );
-
-      await chatDoc.set(chat.toFirestore());
-      return chat;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Get all community chats
-  Stream<List<ChatModel>> getCommunityChats() {
-    return _chatsCollection
-        .where('chatType', isEqualTo: ChatType.community.name)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList(),
-        );
-  }
-
-  /// Get community chat by ID
-  Future<ChatModel?> getCommunityChat(String chatId) async {
-    try {
-      final doc = await _chatsCollection.doc(chatId).get();
-      if (doc.exists) {
-        final chat = ChatModel.fromFirestore(doc);
-        if (chat.chatType == ChatType.community) {
-          return chat;
-        }
-      }
-      return null;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Join a community chat
-  Future<void> joinCommunityChat(String chatId, String userId) async {
-    try {
-      await _chatsCollection.doc(chatId).update({
-        'participantIds': FieldValue.arrayUnion([userId]),
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Leave a community chat
-  Future<void> leaveCommunityChat(String chatId, String userId) async {
-    try {
-      await _chatsCollection.doc(chatId).update({
-        'participantIds': FieldValue.arrayRemove([userId]),
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   /// Get chats by type
   Stream<List<ChatModel>> getChatsByType(String userId, ChatType type) {
-    if (type == ChatType.community) {
-      return getCommunityChats();
-    }
-
     return _chatsCollection
         .where('participantIds', arrayContains: userId)
         .where('chatType', isEqualTo: type.name)
@@ -561,10 +382,5 @@ class ChatService {
   /// Get private chats only
   Stream<List<ChatModel>> getPrivateChats(String userId) {
     return getChatsByType(userId, ChatType.private);
-  }
-
-  /// Get team chats only
-  Stream<List<ChatModel>> getTeamChats(String userId) {
-    return getChatsByType(userId, ChatType.team);
   }
 }

@@ -14,8 +14,6 @@ class ChatProvider extends ChangeNotifier {
   final UserService _userService = UserService();
 
   List<ChatModel> _chats = [];
-  // Removed duplicate lists - using computed getters instead for memory efficiency
-  List<ChatModel> _communityChats = [];
   ChatModel? _currentChat;
   List<MessageModel> _messages = [];
   Map<String, UserModel> _chatUsers = {};
@@ -23,7 +21,6 @@ class ChatProvider extends ChangeNotifier {
   String? _errorMessage;
   StreamSubscription? _messagesSubscription;
   StreamSubscription? _chatsSubscription;
-  StreamSubscription? _communityChatsSubscription;
 
   // Getters
   List<ChatModel> get chats => _chats;
@@ -33,13 +30,9 @@ class ChatProvider extends ChangeNotifier {
   List<ChatModel> get privateChats => _chats
       .where((c) => c.chatType == ChatType.private)
       .toList();
-  List<ChatModel> get teamChats => _chats
-      .where((c) => c.chatType == ChatType.team)
-      .toList();
   List<ChatModel> get groupChats => _chats
       .where((c) => c.chatType == ChatType.group)
       .toList();
-  List<ChatModel> get communityChats => _communityChats;
   ChatModel? get currentChat => _currentChat;
   List<MessageModel> get messages => _messages;
   Map<String, UserModel> get chatUsers => _chatUsers;
@@ -90,23 +83,6 @@ class ChatProvider extends ChangeNotifier {
   /// Listen to user chats
   void listenToChats(String userId) {
     loadUserChats(userId);
-    loadCommunityChats();
-  }
-
-  /// Load community chats
-  void loadCommunityChats() {
-    _communityChatsSubscription?.cancel();
-    _communityChatsSubscription = _chatService.getCommunityChats().listen(
-      (chats) {
-        _communityChats = chats;
-        _safeNotifyListeners();
-      },
-      onError: (e) {
-        print('Error loading community chats: $e');
-        _errorMessage = e.toString();
-        _safeNotifyListeners();
-      },
-    );
   }
 
   /// Get messages stream for a chat
@@ -118,16 +94,6 @@ class ChatProvider extends ChangeNotifier {
   Future<ChatModel?> getChatById(String chatId) async {
     try {
       return await _chatService.getChatById(chatId);
-    } catch (e) {
-      _errorMessage = e.toString();
-      return null;
-    }
-  }
-
-  /// Get or create team chat
-  Future<ChatModel?> getOrCreateTeamChat(String teamId, String teamName) async {
-    try {
-      return await _chatService.getOrCreateTeamChat(teamId, teamName);
     } catch (e) {
       _errorMessage = e.toString();
       return null;
@@ -146,34 +112,6 @@ class ChatProvider extends ChangeNotifier {
       );
     } catch (e) {
       _errorMessage = e.toString();
-      return null;
-    }
-  }
-
-  /// Open team chat
-  Future<ChatModel?> openTeamChat({
-    required String teamId,
-    required String groupName,
-    required List<String> memberIds,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
-
-    try {
-      final chat = await _chatService.createTeamChat(
-        teamId: teamId,
-        groupName: groupName,
-        memberIds: memberIds,
-      );
-      await selectChat(chat);
-      _isLoading = false;
-      _safeNotifyListeners();
-      return chat;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      _safeNotifyListeners();
       return null;
     }
   }
@@ -319,57 +257,6 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  // ==================== COMMUNITY CHAT OPERATIONS ====================
-
-  /// Create a community chat
-  Future<ChatModel?> createCommunityChat({
-    required String name,
-    required String creatorId,
-    String? description,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    _safeNotifyListeners();
-
-    try {
-      final chat = await _chatService.createCommunityChat(
-        name: name,
-        creatorId: creatorId,
-        description: description,
-      );
-      _isLoading = false;
-      _safeNotifyListeners();
-      return chat;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      _safeNotifyListeners();
-      return null;
-    }
-  }
-
-  /// Join a community chat
-  Future<bool> joinCommunityChat(String chatId, String userId) async {
-    try {
-      await _chatService.joinCommunityChat(chatId, userId);
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      return false;
-    }
-  }
-
-  /// Leave a community chat
-  Future<bool> leaveCommunityChat(String chatId, String userId) async {
-    try {
-      await _chatService.leaveCommunityChat(chatId, userId);
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      return false;
-    }
-  }
-
   /// Clear error
   void clearError() {
     _errorMessage = null;
@@ -391,7 +278,6 @@ class ChatProvider extends ChangeNotifier {
   void dispose() {
     _messagesSubscription?.cancel();
     _chatsSubscription?.cancel();
-    _communityChatsSubscription?.cancel();
     super.dispose();
   }
 }

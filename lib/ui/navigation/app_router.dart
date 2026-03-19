@@ -1,51 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
-import '../screens/admin/admin_applications_screen.dart';
-import '../screens/admin/admin_dashboard_screen.dart';
-import '../screens/admin/admin_hackathon_form_screen.dart';
-import '../screens/admin/admin_hackathon_list_screen.dart';
-import '../screens/admin/admin_students_screen.dart';
-import '../screens/admin/admin_teams_screen.dart';
+import '../../data/services/admin_service.dart';
+import '../admin/screens/admin_dashboard_screen.dart';
+import '../admin/screens/admin_hackathon_create_screen.dart';
+import '../admin/screens/admin_hackathon_detail_screen.dart';
+import '../admin/screens/admin_hackathon_edit_screen.dart';
+import '../admin/screens/admin_hackathon_list_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
 import '../screens/chat/chat_list_screen.dart';
 import '../screens/chat/chat_screen.dart';
-import '../screens/chat/community_chat_screen.dart';
 import '../screens/chat/create_group_screen.dart';
 import '../screens/hackathon/hackathon_apply_screen.dart';
 import '../screens/hackathon/hackathon_list_screen.dart';
 import '../screens/hackathon/my_applications_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/members/find_members_screen.dart';
-import '../screens/members/team_requests_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/profile_setup_screen.dart';
-import '../screens/team/create_team_screen.dart';
-import '../screens/team/join_team_screen.dart';
-import '../screens/team/team_dashboard_screen.dart';
 import '../../data/models/hackathon_model.dart';
 
 /// App router configuration
 class AppRouter {
   final AuthProvider authProvider;
+  final AdminService _adminService = AdminService();
 
   AppRouter(this.authProvider);
 
   late final GoRouter router = GoRouter(
     refreshListenable: _AuthStateNotifier(authProvider),
     initialLocation: '/login',
-    redirect: (context, state) {
+    redirect: (context, state) async {
       final isLoggedIn = authProvider.authState == AuthState.authenticated;
+      final isAdminPath = state.matchedLocation.startsWith('/admin');
+      final isAdminLogin = state.matchedLocation == '/admin/login';
       final isLoggingIn =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
-          state.matchedLocation == '/forgot-password';
+          state.matchedLocation == '/forgot-password' ||
+          isAdminLogin;
 
       // If still initializing, don't redirect yet
       if (authProvider.authState == AuthState.initial) {
+        return null;
+      }
+
+      if (isAdminPath) {
+        if (isAdminLogin) {
+          if (!isLoggedIn) {
+            return null;
+          }
+          final isAdmin = await _adminService.isCurrentUserAdmin();
+          return isAdmin ? '/admin/dashboard' : null;
+        }
+
+        if (!isLoggedIn) {
+          return '/admin/login';
+        }
+
+        final isAdmin = await _adminService.isCurrentUserAdmin();
+        if (!isAdmin) {
+          return '/admin/login';
+        }
         return null;
       }
 
@@ -109,27 +128,6 @@ class AppRouter {
         name: 'edit-profile',
         builder: (context, state) => const EditProfileScreen(),
       ),
-      // Team routes
-      GoRoute(
-        path: '/create-team',
-        name: 'create-team',
-        builder: (context, state) => const CreateTeamScreen(),
-      ),
-      GoRoute(
-        path: '/team-dashboard',
-        name: 'team-dashboard',
-        builder: (context, state) => const TeamDashboardScreen(),
-      ),
-      GoRoute(
-        path: '/join-team',
-        name: 'join-team',
-        builder: (context, state) => const JoinTeamScreen(),
-      ),
-      GoRoute(
-        path: '/team-requests',
-        name: 'team-requests',
-        builder: (context, state) => const TeamRequestsScreen(),
-      ),
       // Members routes
       GoRoute(
         path: '/find-members',
@@ -155,12 +153,6 @@ class AppRouter {
             isGroupChat: isGroupChat,
           );
         },
-      ),
-      // Community chat routes
-      GoRoute(
-        path: '/community',
-        name: 'community',
-        builder: (context, state) => const CommunityChatScreen(),
       ),
       // Create group route
       GoRoute(
@@ -204,42 +196,60 @@ class AppRouter {
       GoRoute(
         path: '/admin/hackathons/add',
         name: 'admin-hackathon-add',
-        builder: (context, state) => const AdminHackathonFormScreen(),
+        builder: (context, state) => const AdminHackathonCreateScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathons/create',
+        name: 'admin-hackathon-create',
+        builder: (context, state) => const AdminHackathonCreateScreen(),
+      ),
+      GoRoute(
+        path: '/admin/hackathons/detail',
+        name: 'admin-hackathon-detail',
+        builder: (context, state) {
+          final hackathon = state.extra as HackathonModel;
+          return AdminHackathonDetailScreen(hackathon: hackathon);
+        },
       ),
       GoRoute(
         path: '/admin/hackathons/edit',
         name: 'admin-hackathon-edit',
         builder: (context, state) {
           final hackathon = state.extra as HackathonModel;
-          return AdminHackathonFormScreen(hackathon: hackathon);
+          return AdminHackathonEditScreen(hackathon: hackathon);
         },
       ),
       GoRoute(
         path: '/admin/applications',
         name: 'admin-applications',
-        builder: (context, state) => const AdminApplicationsScreen(),
+        builder: (context, state) => const _FeatureUnavailableScreen(
+          title: 'Applications',
+          message: 'This flow now uses direct Google Form registrations.',
+        ),
       ),
       GoRoute(
         path: '/admin/hackathon-applications/:hackathonId',
         name: 'admin-hackathon-applications',
-        builder: (context, state) {
-          final hackathonId = state.pathParameters['hackathonId']!;
-          final title = state.extra as String?;
-          return AdminApplicationsScreen(
-            hackathonId: hackathonId,
-            hackathonTitle: title,
-          );
-        },
+        builder: (context, state) => const _FeatureUnavailableScreen(
+          title: 'Hackathon Applications',
+          message: 'This flow now uses direct Google Form registrations.',
+        ),
       ),
       GoRoute(
         path: '/admin/students',
         name: 'admin-students',
-        builder: (context, state) => const AdminStudentsScreen(),
+        builder: (context, state) => const _FeatureUnavailableScreen(
+          title: 'Students',
+          message: 'Student admin list is not available in this build.',
+        ),
       ),
       GoRoute(
         path: '/admin/teams',
         name: 'admin-teams',
-        builder: (context, state) => const AdminTeamsScreen(),
+        builder: (context, state) => const _FeatureUnavailableScreen(
+          title: 'Teams',
+          message: 'Team management was removed from the current flow.',
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
@@ -295,5 +305,31 @@ class _AuthStateNotifier extends ChangeNotifier {
   void dispose() {
     _authProvider.removeListener(_onAuthStateChanged);
     super.dispose();
+  }
+}
+
+class _FeatureUnavailableScreen extends StatelessWidget {
+  final String title;
+  final String message;
+
+  const _FeatureUnavailableScreen({
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
   }
 }

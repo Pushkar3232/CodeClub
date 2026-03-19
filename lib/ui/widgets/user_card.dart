@@ -8,7 +8,6 @@ class UserProfileCard extends StatelessWidget {
   final UserModel user;
   final VoidCallback? onTap;
   final VoidCallback? onMessageTap;
-  final VoidCallback? onRequestTap;
   final bool showActions;
   final bool isCompact;
 
@@ -17,7 +16,6 @@ class UserProfileCard extends StatelessWidget {
     required this.user,
     this.onTap,
     this.onMessageTap,
-    this.onRequestTap,
     this.showActions = true,
     this.isCompact = false,
   });
@@ -98,16 +96,6 @@ class UserProfileCard extends StatelessWidget {
                               : AppColors.primaryBlue,
                         ),
                         onPressed: onMessageTap,
-                      ),
-                    if (onRequestTap != null)
-                      IconButton(
-                        icon: Icon(
-                          Icons.person_add_rounded,
-                          color: isDark
-                              ? AppColors.secondaryGreenLight
-                              : AppColors.secondaryGreen,
-                        ),
-                        onPressed: onRequestTap,
                       ),
                   ],
                 ],

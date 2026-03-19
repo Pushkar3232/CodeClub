@@ -16,12 +16,12 @@ class HackathonService {
   Future<List<HackathonModel>> getAllHackathons() async {
     try {
       final snapshot = await _hackathonsCollection
-          .where('isActive', isEqualTo: true)
           .orderBy('startDate', descending: false)
           .get();
 
       return snapshot.docs
           .map((doc) => HackathonModel.fromFirestore(doc))
+          .where((h) => h.isVisibleToStudents)
           .toList();
     } catch (e) {
       rethrow;
@@ -32,14 +32,9 @@ class HackathonService {
   Future<List<HackathonModel>> getUpcomingHackathons() async {
     try {
       final now = DateTime.now();
-      final snapshot = await _hackathonsCollection
-          .where('isActive', isEqualTo: true)
-          .where('startDate', isGreaterThan: Timestamp.fromDate(now))
-          .orderBy('startDate', descending: false)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => HackathonModel.fromFirestore(doc))
+      final all = await getAllHackathons();
+      return all
+          .where((h) => h.startDate.isAfter(now))
           .toList();
     } catch (e) {
       rethrow;
@@ -76,113 +71,15 @@ class HackathonService {
   /// Stream of hackathons
   Stream<List<HackathonModel>> getHackathonsStream() {
     return _hackathonsCollection
-        .where('isActive', isEqualTo: true)
         .orderBy('startDate', descending: false)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => HackathonModel.fromFirestore(doc))
+            .where((h) => h.isVisibleToStudents)
             .toList());
   }
 
-  // ==================== REGISTRATION OPERATIONS ====================
-
-  /// Register individual for hackathon
-  Future<void> registerIndividual(String hackathonId, String userId) async {
-    try {
-      await _hackathonsCollection.doc(hackathonId).update({
-        'registeredIndividualIds': FieldValue.arrayUnion([userId]),
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Register team for hackathon
-  Future<void> registerTeam(String hackathonId, String teamId) async {
-    try {
-      await _hackathonsCollection.doc(hackathonId).update({
-        'registeredTeamIds': FieldValue.arrayUnion([teamId]),
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Unregister individual from hackathon
-  Future<void> unregisterIndividual(String hackathonId, String userId) async {
-    try {
-      await _hackathonsCollection.doc(hackathonId).update({
-        'registeredIndividualIds': FieldValue.arrayRemove([userId]),
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Unregister team from hackathon
-  Future<void> unregisterTeam(String hackathonId, String teamId) async {
-    try {
-      await _hackathonsCollection.doc(hackathonId).update({
-        'registeredTeamIds': FieldValue.arrayRemove([teamId]),
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Check if user is registered
-  Future<bool> isUserRegistered(String hackathonId, String userId) async {
-    try {
-      final hackathon = await getHackathonById(hackathonId);
-      if (hackathon == null) return false;
-      return hackathon.registeredIndividualIds.contains(userId);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Check if team is registered
-  Future<bool> isTeamRegistered(String hackathonId, String teamId) async {
-    try {
-      final hackathon = await getHackathonById(hackathonId);
-      if (hackathon == null) return false;
-      return hackathon.registeredTeamIds.contains(teamId);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Get hackathons user is registered for
-  Future<List<HackathonModel>> getUserRegisteredHackathons(String userId) async {
-    try {
-      final snapshot = await _hackathonsCollection
-          .where('registeredIndividualIds', arrayContains: userId)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => HackathonModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Get hackathons team is registered for
-  Future<List<HackathonModel>> getTeamRegisteredHackathons(String teamId) async {
-    try {
-      final snapshot = await _hackathonsCollection
-          .where('registeredTeamIds', arrayContains: teamId)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => HackathonModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ==================== ADMIN OPERATIONS (For future use) ====================
+  // ==================== ADMIN OPERATIONS ====================
 
   /// Create hackathon (Admin only)
   Future<HackathonModel> createHackathon(HackathonModel hackathon) async {

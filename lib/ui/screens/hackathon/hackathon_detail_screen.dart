@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/hackathon_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/hackathon_provider.dart';
-import '../../../providers/team_provider.dart';
 import '../../widgets/buttons.dart';
 
 /// Hackathon detail screen
@@ -19,18 +19,8 @@ class HackathonDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final authProvider = context.watch<AuthProvider>();
-    final teamProvider = context.watch<TeamProvider>();
+    context.watch<AuthProvider>();
     final hackathonProvider = context.watch<HackathonProvider>();
-    
-    final currentUserId = authProvider.currentUserId;
-    final currentTeam = teamProvider.currentTeam;
-    
-    final isUserRegistered = currentUserId != null &&
-        hackathon.registeredIndividualIds.contains(currentUserId);
-    final isTeamRegistered = currentTeam != null &&
-        hackathon.registeredTeamIds.contains(currentTeam.id);
-    final isRegistered = isUserRegistered || isTeamRegistered;
 
     return Scaffold(
       body: CustomScrollView(
@@ -269,45 +259,27 @@ class HackathonDetailScreen extends StatelessWidget {
                     }),
                     const SizedBox(height: 24),
                   ],
-                  // Registration status
-                  if (isRegistered)
-                    Card(
-                      margin: EdgeInsets.zero,
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: AppColors.success,
+                  Card(
+                    margin: EdgeInsets.zero,
+                    color: AppColors.info.withValues(alpha: 0.1),
+                    child: const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            color: AppColors.info,
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Registration is handled through the linked Google Form.',
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'You\'re Registered!',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.success,
-                                    ),
-                                  ),
-                                  Text(
-                                    isTeamRegistered
-                                        ? 'Your team is registered for this hackathon'
-                                        : 'You are registered as an individual',
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -315,7 +287,7 @@ class HackathonDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: !isRegistered && hackathon.isRegistrationOpen
+      bottomNavigationBar: hackathon.isRegistrationOpen
           ? Container(
               padding: EdgeInsets.only(
                 left: 16,
@@ -335,7 +307,7 @@ class HackathonDetailScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  // Apply through application flow
+                  // Open apply screen that redirects to Google Form
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => context.push(
@@ -347,24 +319,10 @@ class HackathonDetailScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Register as individual
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _registerIndividual(context),
-                      child: const Text('Solo'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Register as team
-                  Expanded(
-                    flex: 2,
                     child: PrimaryButton(
-                      text: currentTeam != null
-                          ? 'Register Team'
-                          : 'Create Team First',
-                      onPressed: currentTeam != null
-                          ? () => _registerTeam(context)
-                          : null,
+                      text: 'Open Form',
+                      onPressed: () => _openRegistrationForm(context),
                       isLoading: hackathonProvider.isLoading,
                     ),
                   ),
@@ -375,82 +333,32 @@ class HackathonDetailScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _registerIndividual(BuildContext context) async {
-    final authProvider = context.read<AuthProvider>();
-    final hackathonProvider = context.read<HackathonProvider>();
-    final userId = authProvider.currentUserId;
-    
-    if (userId == null) return;
+  Future<void> _openRegistrationForm(BuildContext context) async {
+    final formUrl = hackathon.registrationFormUrl.trim();
+    if (formUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration form is not available for this hackathon.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
-    final success = await hackathonProvider.registerIndividual(
-      hackathon.id,
-      userId,
+    final uri = Uri.tryParse(formUrl);
+    final success = uri != null &&
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!context.mounted || success) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not open registration form URL.'),
+        backgroundColor: AppColors.error,
+      ),
     );
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Successfully registered for ${hackathon.title}'
-                : (hackathonProvider.errorMessage ?? 'Registration failed'),
-          ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  Future<void> _registerTeam(BuildContext context) async {
-    final teamProvider = context.read<TeamProvider>();
-    final hackathonProvider = context.read<HackathonProvider>();
-    final team = teamProvider.currentTeam;
-    
-    if (team == null) return;
-
-    // Check team size
-    if (team.memberIds.length < hackathon.minTeamSize) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Your team needs at least ${hackathon.minTeamSize} members',
-          ),
-          backgroundColor: AppColors.warning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    if (team.memberIds.length > hackathon.maxTeamSize) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Your team exceeds the maximum size of ${hackathon.maxTeamSize}',
-          ),
-          backgroundColor: AppColors.warning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    final success = await hackathonProvider.registerTeam(hackathon.id, team.id);
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Team registered for ${hackathon.title}'
-                : (hackathonProvider.errorMessage ?? 'Registration failed'),
-          ),
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
   }
 }
 

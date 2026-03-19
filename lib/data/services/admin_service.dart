@@ -1,244 +1,326 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/application_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../models/admin_model.dart';
 import '../models/hackathon_model.dart';
-import '../models/user_model.dart';
-import '../models/team_model.dart';
 
-/// Admin service for CodeClub
-/// Handles all admin-related Firestore operations
 class AdminService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // Collection references
-  CollectionReference<Map<String, dynamic>> get _hackathonsCollection =>
+  CollectionReference<Map<String, dynamic>> get _admins =>
+      _firestore.collection('admins');
+  CollectionReference<Map<String, dynamic>> get _adminLegacy =>
+      _firestore.collection('admin');
+  CollectionReference<Map<String, dynamic>> get _hackathons =>
       _firestore.collection('hackathons');
 
-  CollectionReference<Map<String, dynamic>> get _applicationsCollection =>
-      _firestore.collection('applications');
-
-  CollectionReference<Map<String, dynamic>> get _usersCollection =>
-      _firestore.collection('users');
-
-  CollectionReference<Map<String, dynamic>> get _teamsCollection =>
-      _firestore.collection('teams');
-
-  // ==================== HACKATHON CRUD ====================
-
-  /// Create a new hackathon
-  Future<HackathonModel> createHackathon(HackathonModel hackathon) async {
-    try {
-      final doc = _hackathonsCollection.doc();
-      final newHackathon = hackathon.copyWith(id: doc.id);
-      await doc.set(newHackathon.toFirestore());
-      return newHackathon;
-    } catch (e) {
-      rethrow;
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _getAdminDoc(String uid) async {
+    final adminsDoc = await _admins.doc(uid).get();
+    if (adminsDoc.exists) {
+      return adminsDoc;
     }
+
+    final legacyDoc = await _adminLegacy.doc(uid).get();
+    if (legacyDoc.exists) {
+      return legacyDoc;
+    }
+
+    return null;
   }
 
-  /// Update an existing hackathon
-  Future<void> updateHackathon(HackathonModel hackathon) async {
+  Future<AdminModel?> signInAdmin(String email, String password) async {
     try {
-      await _hackathonsCollection
-          .doc(hackathon.id)
-          .update(hackathon.toFirestore());
-    } catch (e) {
-      rethrow;
-    }
-  }
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
 
-  /// Delete a hackathon and its applications
-  Future<void> deleteHackathon(String hackathonId) async {
-    try {
-      // Delete related applications
-      final apps = await _applicationsCollection
-          .where('hackathonId', isEqualTo: hackathonId)
-          .get();
-      final batch = _firestore.batch();
-      for (final doc in apps.docs) {
-        batch.delete(doc.reference);
-      }
-      batch.delete(_hackathonsCollection.doc(hackathonId));
-      await batch.commit();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Get all hackathons (including inactive, for admin view)
-  Future<List<HackathonModel>> getAllHackathonsAdmin() async {
-    try {
-      final snapshot = await _hackathonsCollection
-          .orderBy('createdAt', descending: true)
-          .get();
-      return snapshot.docs
-          .map((doc) => HackathonModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ==================== APPLICATION MANAGEMENT ====================
-
-  /// Get all applications (admin view)
-  Future<List<ApplicationModel>> getAllApplications() async {
-    try {
-      final snapshot = await _applicationsCollection
-          .orderBy('appliedAt', descending: true)
-          .get();
-      return snapshot.docs
-          .map((doc) => ApplicationModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Get applications for a specific hackathon
-  Future<List<ApplicationModel>> getApplicationsForHackathon(
-      String hackathonId) async {
-    try {
-      final snapshot = await _applicationsCollection
-          .where('hackathonId', isEqualTo: hackathonId)
-          .orderBy('appliedAt', descending: true)
-          .get();
-      return snapshot.docs
-          .map((doc) => ApplicationModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Approve an application
-  Future<void> approveApplication(
-      String applicationId, String adminUid) async {
-    try {
-      await _applicationsCollection.doc(applicationId).update({
-        'status': 'approved',
-        'reviewedAt': Timestamp.now(),
-        'reviewedBy': adminUid,
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Reject an application
-  Future<void> rejectApplication(
-      String applicationId, String adminUid, {String? remarks}) async {
-    try {
-      await _applicationsCollection.doc(applicationId).update({
-        'status': 'rejected',
-        'reviewedAt': Timestamp.now(),
-        'reviewedBy': adminUid,
-        'remarks': remarks,
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ==================== STUDENT APPLICATION ====================
-
-  /// Submit an application (used by students)
-  Future<ApplicationModel> submitApplication(
-      ApplicationModel application) async {
-    try {
-      // Check if already applied
-      final existing = await _applicationsCollection
-          .where('hackathonId', isEqualTo: application.hackathonId)
-          .where('userId', isEqualTo: application.userId)
-          .get();
-      if (existing.docs.isNotEmpty) {
-        throw Exception('You have already applied for this hackathon');
+      final user = credential.user;
+      if (user == null) {
+        throw Exception('Unable to sign in as admin. Please try again.');
       }
 
-      final doc = _applicationsCollection.doc();
-      final newApp = application.copyWith(id: doc.id);
-      await doc.set(newApp.toFirestore());
-      return newApp;
-    } catch (e) {
-      rethrow;
-    }
-  }
+      // Force refresh the token to get the latest custom claims
+      final tokenResult = await user.getIdTokenResult(true);
+      final isAdminClaim = tokenResult.claims?['admin'] == true;
+      if (!isAdminClaim) {
+        await signOutAdmin();
+        throw Exception('You are not authorized as an admin.');
+      }
 
-  /// Get applications by user
-  Future<List<ApplicationModel>> getUserApplications(String userId) async {
-    try {
-      final snapshot = await _applicationsCollection
-          .where('userId', isEqualTo: userId)
-          .orderBy('appliedAt', descending: true)
-          .get();
-      return snapshot.docs
-          .map((doc) => ApplicationModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
+      // Read admin document with explicit error handling
+      final adminDoc = await _getAdminDoc(user.uid);
+      if (adminDoc == null) {
+        await signOutAdmin();
+        throw Exception('Admin profile not found in Firestore. Please contact superadmin.');
+      }
 
-  // ==================== USER / TEAM VIEWS ====================
+      final admin = AdminModel.fromFirestore(adminDoc);
+      if (!admin.isActive) {
+        await signOutAdmin();
+        throw Exception('This admin account is currently disabled.');
+      }
 
-  /// Get all registered students
-  Future<List<UserModel>> getAllStudents() async {
-    try {
-      final snapshot = await _usersCollection
-          .where('role', isNotEqualTo: 'admin')
-          .get();
-      return snapshot.docs
-          .map((doc) => UserModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      // Fallback: fetch all and filter
+      // Update last login timestamp
       try {
-        final snapshot = await _usersCollection.get();
-        return snapshot.docs
-            .map((doc) => UserModel.fromFirestore(doc))
-            .where((u) => u.role != 'admin')
-            .toList();
-      } catch (e2) {
-        rethrow;
+        await adminDoc.reference.update({'lastLoginAt': FieldValue.serverTimestamp()});
+      } catch (e) {
+        // If update fails, don't block the login
+        print('Warning: Could not update lastLoginAt: $e');
+      }
+
+      return admin;
+    } catch (e) {
+      await signOutAdmin();
+      rethrow;
+    }
+  }
+
+  Future<void> signOutAdmin() async {
+    await _auth.signOut();
+  }
+
+  Future<bool> isCurrentUserAdmin() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return false;
+    }
+
+    final tokenResult = await user.getIdTokenResult(true);
+    if (tokenResult.claims?['admin'] != true) {
+      return false;
+    }
+
+    final adminDoc = await _getAdminDoc(user.uid);
+    if (adminDoc == null) {
+      return false;
+    }
+
+    final admin = AdminModel.fromFirestore(adminDoc);
+    return admin.isActive;
+  }
+
+  Future<AdminModel?> getCurrentAdmin() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return null;
+    }
+
+    if (!await isCurrentUserAdmin()) {
+      return null;
+    }
+
+    final adminDoc = await _getAdminDoc(user.uid);
+    if (adminDoc == null) {
+      return null;
+    }
+
+    return AdminModel.fromFirestore(adminDoc);
+  }
+
+  Stream<AdminModel?> adminAuthStateChanges() {
+    return _auth.authStateChanges().asyncMap((user) async {
+      if (user == null) {
+        return null;
+      }
+
+      final tokenResult = await user.getIdTokenResult(true);
+      if (tokenResult.claims?['admin'] != true) {
+        return null;
+      }
+
+      final doc = await _getAdminDoc(user.uid);
+      if (doc == null) {
+        return null;
+      }
+
+      final admin = AdminModel.fromFirestore(doc);
+      if (!admin.isActive) {
+        return null;
+      }
+
+      return admin;
+    });
+  }
+
+  Future<AdminDashboardStats> getDashboardStats() async {
+    final usersFuture = _firestore.collection('users').get();
+    final teamsFuture = _firestore.collection('teams').get();
+    final hackathonsFuture = _hackathons.get();
+
+    final snapshots = await Future.wait([usersFuture, teamsFuture, hackathonsFuture]);
+
+    final usersSnapshot = snapshots[0];
+    final teamsSnapshot = snapshots[1];
+    final hackathonsSnapshot = snapshots[2];
+
+    int activeCount = 0;
+
+    for (final doc in hackathonsSnapshot.docs) {
+      final model = HackathonModel.fromFirestore(doc);
+      if (model.isDeleted) {
+        continue;
+      }
+      if (model.status == HackathonStatus.published ||
+          model.status == HackathonStatus.ongoing) {
+        activeCount++;
       }
     }
+
+    return AdminDashboardStats(
+      totalUsers: usersSnapshot.docs.length,
+      totalTeams: teamsSnapshot.docs.length,
+      totalHackathons: hackathonsSnapshot.docs
+          .map(HackathonModel.fromFirestore)
+          .where((h) => !h.isDeleted)
+          .length,
+      activeHackathons: activeCount,
+    );
   }
 
-  /// Get all teams
-  Future<List<TeamModel>> getAllTeams() async {
-    try {
-      final snapshot = await _teamsCollection.get();
-      return snapshot.docs
-          .map((doc) => TeamModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      rethrow;
+  Stream<int> getTotalUsersStream() {
+    return _firestore
+        .collection('users')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  Stream<int> getTotalTeamsStream() {
+    return _firestore
+        .collection('teams')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  Stream<int> getActiveHackathonsStream() {
+    return _hackathons
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map(HackathonModel.fromFirestore)
+            .where((h) => !h.isDeleted && h.isActive)
+            .length);
+  }
+
+  Future<String> createHackathon(HackathonModel hackathon, String adminId) async {
+    final doc = _hackathons.doc();
+    await doc.set({
+      ...hackathon.copyWith(id: doc.id).toFirestore(),
+      'createdByAdminId': adminId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isDeleted': false,
+      'status': (hackathon.status).value,
+      'isActive': hackathon.status == HackathonStatus.published ||
+          hackathon.status == HackathonStatus.ongoing,
+    });
+    return doc.id;
+  }
+
+  Future<List<HackathonModel>> getAllHackathons({bool includeDeleted = false}) async {
+    final snapshot = await _hackathons.get();
+    final hackathons = snapshot.docs.map(HackathonModel.fromFirestore).where((h) {
+      if (includeDeleted) {
+        return true;
+      }
+      return !h.isDeleted;
+    }).toList();
+
+    hackathons.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return hackathons;
+  }
+
+  Stream<List<HackathonModel>> getHackathonsStream({bool includeDeleted = false}) {
+    return _hackathons.snapshots().map((snapshot) {
+      final hackathons = snapshot.docs.map(HackathonModel.fromFirestore).where((h) {
+        if (includeDeleted) {
+          return true;
+        }
+        return !h.isDeleted;
+      }).toList();
+
+      hackathons.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return hackathons;
+    });
+  }
+
+  Future<HackathonModel?> getHackathonById(String hackathonId) async {
+    final doc = await _hackathons.doc(hackathonId).get();
+    if (!doc.exists) {
+      return null;
     }
+    return HackathonModel.fromFirestore(doc);
   }
 
-  /// Get dashboard stats
-  Future<Map<String, int>> getDashboardStats() async {
+  Future<void> updateHackathon(
+    String hackathonId,
+    Map<String, dynamic> data,
+    String adminId,
+  ) async {
+    final mutable = Map<String, dynamic>.from(data);
+
+    if (mutable.containsKey('status')) {
+      final statusRaw = mutable['status'];
+      final status = statusRaw is HackathonStatus
+          ? statusRaw
+          : hackathonStatusFromString(statusRaw?.toString());
+      mutable['status'] = status.value;
+      mutable['isActive'] =
+          status == HackathonStatus.published || status == HackathonStatus.ongoing;
+    }
+
+    mutable['lastEditedByAdminId'] = adminId;
+    mutable['lastEditedAt'] = FieldValue.serverTimestamp();
+
+    await _hackathons.doc(hackathonId).update(mutable);
+  }
+
+  Future<void> toggleHackathonStatus(
+    String hackathonId,
+    HackathonStatus newStatus,
+    String adminId,
+  ) async {
+    await _hackathons.doc(hackathonId).update({
+      'status': newStatus.value,
+      'isActive':
+          newStatus == HackathonStatus.published || newStatus == HackathonStatus.ongoing,
+      'lastEditedByAdminId': adminId,
+      'lastEditedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> softDeleteHackathon(String hackathonId, String adminId) async {
+    await _hackathons.doc(hackathonId).update({
+      'isDeleted': true,
+      'deletedAt': FieldValue.serverTimestamp(),
+      'status': HackathonStatus.cancelled.value,
+      'isActive': false,
+      'lastEditedByAdminId': adminId,
+      'lastEditedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> permanentlyDeleteHackathon(String hackathonId) async {
+    await deleteHackathonBanner(hackathonId);
+    await _hackathons.doc(hackathonId).delete();
+  }
+
+  Future<String> uploadHackathonBanner(String hackathonId, XFile imageFile) async {
+    final ref = _storage.ref().child('hackathons/$hackathonId/banner.jpg');
+    final bytes = await imageFile.readAsBytes();
+    await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+    return ref.getDownloadURL();
+  }
+
+  Future<void> deleteHackathonBanner(String hackathonId) async {
     try {
-      final users = await _usersCollection.get();
-      final teams = await _teamsCollection.get();
-      final hackathons = await _hackathonsCollection.get();
-      final applications = await _applicationsCollection.get();
-
-      final studentCount =
-          users.docs.where((d) => (d.data()['role'] ?? '') != 'admin').length;
-      final pendingApps = applications.docs
-          .where((d) => (d.data()['status'] ?? '') == 'pending')
-          .length;
-
-      return {
-        'students': studentCount,
-        'teams': teams.docs.length,
-        'hackathons': hackathons.docs.length,
-        'applications': applications.docs.length,
-        'pendingApplications': pendingApps,
-      };
-    } catch (e) {
-      rethrow;
+      final ref = _storage.ref().child('hackathons/$hackathonId/banner.jpg');
+      await ref.delete();
+    } catch (_) {
+      // Ignore if no banner exists.
     }
   }
 }
+
