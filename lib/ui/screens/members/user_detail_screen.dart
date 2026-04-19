@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/user_model.dart';
@@ -28,9 +29,7 @@ class UserDetailScreen extends StatelessWidget {
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                ),
+                decoration: BoxDecoration(gradient: AppColors.primaryGradient),
                 child: SafeArea(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -38,22 +37,27 @@ class UserDetailScreen extends StatelessWidget {
                       const SizedBox(height: 40),
                       // Avatar
                       CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.white.withValues(alpha: 0.2),
-                        backgroundImage: user.profileImageUrl != null
-                            ? NetworkImage(user.profileImageUrl!)
-                            : null,
-                        child: user.profileImageUrl == null
-                            ? Text(
-                                user.fullName.initials,
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : null,
-                      ).animate().fadeIn(duration: 500.ms).scale(
+                            radius: 50,
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.2,
+                            ),
+                            backgroundImage: user.profileImageUrl != null
+                                ? NetworkImage(user.profileImageUrl!)
+                                : null,
+                            child: user.profileImageUrl == null
+                                ? Text(
+                                    user.fullName.initials,
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : null,
+                          )
+                          .animate()
+                          .fadeIn(duration: 500.ms)
+                          .scale(
                             begin: const Offset(0.8, 0.8),
                             end: const Offset(1, 1),
                             duration: 500.ms,
@@ -115,72 +119,154 @@ class UserDetailScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   // Info cards
                   _InfoCard(
-                    title: 'Academic Info',
-                    icon: Icons.school_rounded,
-                    children: [
-                      _InfoRow(label: 'Branch', value: user.branch),
-                      _InfoRow(label: 'Year', value: user.year),
-                    ],
-                  ).animate().fadeIn(delay: 400.ms, duration: 400.ms).slideY(
-                        begin: 0.05,
-                        end: 0,
-                        duration: 400.ms,
-                      ),
+                        title: 'Academic Info',
+                        icon: Icons.school_rounded,
+                        children: [
+                          _InfoRow(label: 'Branch', value: user.branch),
+                          _InfoRow(label: 'Year', value: user.year),
+                        ],
+                      )
+                      .animate()
+                      .fadeIn(delay: 400.ms, duration: 400.ms)
+                      .slideY(begin: 0.05, end: 0, duration: 400.ms),
                   const SizedBox(height: 16),
                   if (user.bio.isNotEmpty)
                     _InfoCard(
-                      title: 'About',
-                      icon: Icons.info_outline_rounded,
-                      children: [
-                        Text(
-                          user.bio,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ).animate().fadeIn(delay: 500.ms, duration: 400.ms).slideY(
-                          begin: 0.05,
-                          end: 0,
-                          duration: 400.ms,
-                        ),
+                          title: 'About',
+                          icon: Icons.info_outline_rounded,
+                          children: [
+                            Text(
+                              user.bio,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        )
+                        .animate()
+                        .fadeIn(delay: 500.ms, duration: 400.ms)
+                        .slideY(begin: 0.05, end: 0, duration: 400.ms),
                   if (user.bio.isNotEmpty) const SizedBox(height: 16),
                   _InfoCard(
-                    title: 'Skills',
-                    icon: Icons.code_rounded,
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: user.skills.map((skill) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
+                        title: 'Social Profiles',
+                        icon: Icons.link_rounded,
+                        children: [
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: [
+                              if (user.linkedInUrl != null &&
+                                  user.linkedInUrl!.trim().isNotEmpty)
+                                _SocialActionButton(
+                                  label: 'Open LinkedIn',
+                                  icon: Icons.business_center_outlined,
+                                  onTap: () => _openExternalUrl(
+                                    context,
+                                    platform: 'LinkedIn',
+                                    rawUrl: user.linkedInUrl!,
+                                  ),
+                                ),
+                              if (user.githubUrl != null &&
+                                  user.githubUrl!.trim().isNotEmpty)
+                                _SocialActionButton(
+                                  label: 'Open GitHub',
+                                  icon: Icons.code_rounded,
+                                  onTap: () => _openExternalUrl(
+                                    context,
+                                    platform: 'GitHub',
+                                    rawUrl: user.githubUrl!,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if ((user.linkedInUrl != null &&
+                                  user.linkedInUrl!.trim().isNotEmpty) ||
+                              (user.githubUrl != null &&
+                                  user.githubUrl!.trim().isNotEmpty))
+                            const SizedBox(height: 12),
+                          if (user.linkedInUrl != null &&
+                              user.linkedInUrl!.trim().isNotEmpty)
+                            _buildSocialLinkRow(
+                              context,
+                              platform: 'LinkedIn',
+                              url: user.linkedInUrl!,
                             ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppColors.primaryBlue.withValues(alpha: 0.2)
-                                  : AppColors.primaryBlueLight.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(16),
+                          if (user.linkedInUrl != null &&
+                              user.linkedInUrl!.trim().isNotEmpty &&
+                              user.githubUrl != null &&
+                              user.githubUrl!.trim().isNotEmpty)
+                            const SizedBox(height: 12),
+                          if (user.githubUrl != null &&
+                              user.githubUrl!.trim().isNotEmpty)
+                            _buildSocialLinkRow(
+                              context,
+                              platform: 'GitHub',
+                              url: user.githubUrl!,
                             ),
-                            child: Text(
-                              skill,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDark
-                                    ? AppColors.primaryBlueLight
-                                    : AppColors.primaryBlue,
-                                fontWeight: FontWeight.w500,
+                          if (user.linkedInUrl == null ||
+                              user.linkedInUrl!.trim().isEmpty)
+                            if (user.githubUrl == null ||
+                                user.githubUrl!.trim().isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                child: Text(
+                                  'No LinkedIn or GitHub links added yet.',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: isDark
+                                            ? AppColors.textSecondaryDark
+                                            : AppColors.textSecondaryLight,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                ),
                               ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ).animate().fadeIn(delay: 600.ms, duration: 400.ms).slideY(
-                        begin: 0.05,
-                        end: 0,
-                        duration: 400.ms,
-                      ),
+                        ],
+                      )
+                      .animate()
+                      .fadeIn(delay: 560.ms, duration: 400.ms)
+                      .slideY(begin: 0.05, end: 0, duration: 400.ms),
+                  const SizedBox(height: 16),
+                  _InfoCard(
+                        title: 'Skills',
+                        icon: Icons.code_rounded,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: user.skills.map((skill) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? AppColors.primaryBlue.withValues(
+                                          alpha: 0.2,
+                                        )
+                                      : AppColors.primaryBlueLight.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  skill,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark
+                                        ? AppColors.primaryBlueLight
+                                        : AppColors.primaryBlue,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      )
+                      .animate()
+                      .fadeIn(delay: 600.ms, duration: 400.ms)
+                      .slideY(begin: 0.05, end: 0, duration: 400.ms),
                   const SizedBox(height: 32),
                 ],
               ),
@@ -195,19 +281,117 @@ class UserDetailScreen extends StatelessWidget {
     final authProvider = context.read<AuthProvider>();
     final chatProvider = context.read<ChatProvider>();
     final currentUserId = authProvider.currentUserId;
-    
+
     if (currentUserId == null) return;
 
     final chat = await chatProvider.openChatWithUser(currentUserId, user.uid);
-    
+
     if (chat != null && context.mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatScreen(
-            chatId: chat.id,
-            title: user.fullName,
+          builder: (_) => ChatScreen(chatId: chat.id, title: user.fullName),
+        ),
+      );
+    }
+  }
+
+  Widget _buildSocialLinkRow(
+    BuildContext context, {
+    required String platform,
+    required String url,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: () => _openExternalUrl(context, platform: platform, rawUrl: url),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColors.primaryBlue.withValues(alpha: 0.1)
+              : AppColors.primaryBlueLight.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              platform == 'LinkedIn'
+                  ? Icons.business_center_outlined
+                  : Icons.code_rounded,
+              color: AppColors.primaryBlue,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    platform,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    url.replaceFirst(RegExp(r'https?://'), ''),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.open_in_new_rounded,
+              size: 18,
+              color: AppColors.primaryBlue,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openExternalUrl(
+    BuildContext context, {
+    required String platform,
+    required String rawUrl,
+  }) async {
+    final normalized = rawUrl.startsWith(RegExp(r'https?://'))
+        ? rawUrl
+        : 'https://$rawUrl';
+
+    try {
+      final uri = Uri.parse(normalized);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open $platform link'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
           ),
+        );
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Invalid $platform URL'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -252,6 +436,28 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
+class _SocialActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _SocialActionButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+    );
+  }
+}
+
 /// Info card widget
 class _InfoCard extends StatelessWidget {
   final String title;
@@ -275,17 +481,13 @@ class _InfoCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: AppColors.primaryBlue,
-                ),
+                Icon(icon, size: 20, color: AppColors.primaryBlue),
                 const SizedBox(width: 8),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -308,7 +510,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -317,16 +519,16 @@ class _InfoRow extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isDark
-                      ? AppColors.textSecondaryDark
-                      : AppColors.textSecondaryLight,
-                ),
+              color: isDark
+                  ? AppColors.textSecondaryDark
+                  : AppColors.textSecondaryLight,
+            ),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),
