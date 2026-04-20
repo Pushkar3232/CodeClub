@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/extensions.dart';
 import '../../data/models/user_model.dart';
@@ -44,7 +45,7 @@ class UserProfileCard extends StatelessWidget {
                     radius: isCompact ? 24 : 32,
                     backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
                     backgroundImage: user.profileImageUrl != null
-                        ? NetworkImage(user.profileImageUrl!)
+                      ? CachedNetworkImageProvider(user.profileImageUrl!)
                         : null,
                     child: user.profileImageUrl == null
                         ? Text(
@@ -248,7 +249,7 @@ class UserAvatar extends StatelessWidget {
           radius: radius,
           backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
           backgroundImage: user?.profileImageUrl != null
-              ? NetworkImage(user!.profileImageUrl!)
+              ? CachedNetworkImageProvider(user!.profileImageUrl!)
               : null,
           child: user?.profileImageUrl == null
               ? Text(

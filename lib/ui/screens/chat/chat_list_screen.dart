@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/chat_model.dart';
@@ -314,7 +315,7 @@ class _ChatListItemState extends State<_ChatListItem> {
         backgroundColor: iconColor.withValues(alpha: 0.1),
         backgroundImage:
             !widget.chat.isGroupChat && _otherUser?.profileImageUrl != null
-            ? NetworkImage(_otherUser!.profileImageUrl!)
+          ? CachedNetworkImageProvider(_otherUser!.profileImageUrl!)
             : null,
         child: !widget.chat.isGroupChat && _otherUser?.profileImageUrl != null
             ? null

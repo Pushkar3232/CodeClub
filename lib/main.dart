@@ -31,7 +31,9 @@ void main() async {
           kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
       appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
     );
-    print('Firebase initialized successfully');
+    if (kDebugMode) {
+      debugPrint('Firebase initialized successfully');
+    }
 
     // Initialize admin account (runs once)
     try {
@@ -40,11 +42,15 @@ void main() async {
         AdminInitService.printAdminCredentials();
       }
     } catch (e) {
-      print('⚠️  Admin initialization error: $e');
+      if (kDebugMode) {
+        debugPrint('Admin initialization error: $e');
+      }
     }
   } catch (e) {
-    print('Firebase initialization error: $e');
-    print('Running without Firebase - some features may not work');
+    if (kDebugMode) {
+      debugPrint('Firebase initialization error: $e');
+      debugPrint('Running without Firebase - some features may not work');
+    }
     // Continue without Firebase for now - you can still test the UI
   }
 
@@ -55,7 +61,9 @@ void main() async {
       DeviceOrientation.portraitDown,
     ]);
   } catch (e) {
-    print('Orientation setting skipped (likely web platform): $e');
+    if (kDebugMode) {
+      debugPrint('Orientation setting skipped (likely web platform): $e');
+    }
   }
 
   // Initialize SharedPreferences
@@ -85,8 +93,6 @@ class CodeClubApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         // Hackathon provider
         ChangeNotifierProvider(create: (_) => HackathonProvider()),
-        // Admin provider
-        ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],
       child: const _AppContent(),
     );

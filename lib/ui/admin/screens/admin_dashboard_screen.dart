@@ -20,8 +20,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final provider = context.read<AdminProvider>();
       await provider.loadDashboardStats();
+      if (!mounted) return;
       await provider.loadAllHackathons();
     });
   }

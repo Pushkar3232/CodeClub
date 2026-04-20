@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/extensions.dart';
 import '../../data/models/hackathon_model.dart';
@@ -41,7 +42,7 @@ class HackathonCard extends StatelessWidget {
                     : null,
                 image: hackathon.imageUrl != null
                     ? DecorationImage(
-                        image: NetworkImage(hackathon.imageUrl!),
+                        image: CachedNetworkImageProvider(hackathon.imageUrl!),
                         fit: BoxFit.cover,
                       )
                     : null,

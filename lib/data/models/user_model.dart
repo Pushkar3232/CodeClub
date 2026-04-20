@@ -62,6 +62,17 @@ class UserModel {
   /// Create from Firestore document
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    String? readOptionalString(List<String> keys) {
+      for (final key in keys) {
+        final value = data[key];
+        if (value is String && value.trim().isNotEmpty) {
+          return value.trim();
+        }
+      }
+      return null;
+    }
+
     return UserModel(
       uid: doc.id,
       email: data['email'] ?? '',
@@ -73,8 +84,17 @@ class UserModel {
       bio: data['bio'] ?? '',
       profileImageUrl: data['profileImageUrl'],
       currentTeamId: data['currentTeamId'],
-      linkedInUrl: data['linkedInUrl'],
-      githubUrl: data['githubUrl'],
+      linkedInUrl: readOptionalString([
+        'linkedInUrl',
+        'linkedinUrl',
+        'linkedIn',
+        'linkedin',
+      ]),
+      githubUrl: readOptionalString([
+        'githubUrl',
+        'gitHubUrl',
+        'github',
+      ]),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isProfileComplete: data['isProfileComplete'] ?? false,

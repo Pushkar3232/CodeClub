@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
-import '../../data/services/admin_service.dart';
 import '../admin/screens/admin_dashboard_screen.dart';
 import '../admin/screens/admin_hackathon_create_screen.dart';
 import '../admin/screens/admin_hackathon_detail_screen.dart';
 import '../admin/screens/admin_hackathon_edit_screen.dart';
 import '../admin/screens/admin_hackathon_list_screen.dart';
+import '../admin/screens/admin_login_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
@@ -26,15 +26,15 @@ import '../../data/models/hackathon_model.dart';
 /// App router configuration
 class AppRouter {
   final AuthProvider authProvider;
-  final AdminService _adminService = AdminService();
 
   AppRouter(this.authProvider);
 
   late final GoRouter router = GoRouter(
     refreshListenable: _AuthStateNotifier(authProvider),
     initialLocation: '/login',
-    redirect: (context, state) async {
+    redirect: (context, state) {
       final isLoggedIn = authProvider.authState == AuthState.authenticated;
+      final currentUser = authProvider.currentUser;
       final isAdminPath = state.matchedLocation.startsWith('/admin');
       final isAdminLogin = state.matchedLocation == '/admin/login';
       final isLoggingIn =
@@ -50,21 +50,13 @@ class AppRouter {
 
       if (isAdminPath) {
         if (isAdminLogin) {
-          if (!isLoggedIn) {
-            return null;
-          }
-          final isAdmin = await _adminService.isCurrentUserAdmin();
-          return isAdmin ? '/admin/dashboard' : null;
+          return null;
         }
 
         if (!isLoggedIn) {
           return '/admin/login';
         }
-
-        final isAdmin = await _adminService.isCurrentUserAdmin();
-        if (!isAdmin) {
-          return '/admin/login';
-        }
+        // Let AdminAuthGuard validate admin privileges after route enter.
         return null;
       }
 
@@ -76,12 +68,11 @@ class AppRouter {
       // If logged in and on auth page, redirect based on role
       if (isLoggedIn && isLoggingIn) {
         // Check if profile is complete
-        final user = authProvider.currentUser;
-        if (user != null && !user.isProfileComplete) {
+        if (currentUser != null && !currentUser.isProfileComplete) {
           return '/profile-setup';
         }
         // Role-based redirect: admin goes to admin dashboard
-        if (user != null && user.role == 'admin') {
+        if (currentUser?.role == 'admin') {
           return '/admin/dashboard';
         }
         return '/home';
@@ -105,6 +96,11 @@ class AppRouter {
         path: '/forgot-password',
         name: 'forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/admin/login',
+        name: 'admin-login',
+        builder: (context, state) => const AdminLoginScreen(),
       ),
       GoRoute(
         path: '/profile-setup',

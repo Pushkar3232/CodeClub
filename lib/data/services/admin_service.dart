@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -17,6 +18,19 @@ class AdminService {
       _firestore.collection('admin');
   CollectionReference<Map<String, dynamic>> get _hackathons =>
       _firestore.collection('hackathons');
+
+  HackathonModel? _safeHackathonFromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    try {
+      return HackathonModel.fromFirestore(doc);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('AdminService: Skipping malformed hackathon ${doc.id}: $e');
+      }
+      return null;
+    }
+  }
 
   Future<DocumentSnapshot<Map<String, dynamic>>?> _getAdminDoc(String uid) async {
     final adminsDoc = await _admins.doc(uid).get();
@@ -70,7 +84,9 @@ class AdminService {
         await adminDoc.reference.update({'lastLoginAt': FieldValue.serverTimestamp()});
       } catch (e) {
         // If update fails, don't block the login
-        print('Warning: Could not update lastLoginAt: $e');
+        if (kDebugMode) {
+          debugPrint('Warning: Could not update lastLoginAt: $e');
+        }
       }
 
       return admin;
@@ -159,9 +175,14 @@ class AdminService {
     final hackathonsSnapshot = snapshots[2];
 
     int activeCount = 0;
+    final validHackathons = <HackathonModel>[];
 
     for (final doc in hackathonsSnapshot.docs) {
-      final model = HackathonModel.fromFirestore(doc);
+      final model = _safeHackathonFromFirestore(doc);
+      if (model == null) {
+        continue;
+      }
+      validHackathons.add(model);
       if (model.isDeleted) {
         continue;
       }
@@ -174,10 +195,7 @@ class AdminService {
     return AdminDashboardStats(
       totalUsers: usersSnapshot.docs.length,
       totalTeams: teamsSnapshot.docs.length,
-      totalHackathons: hackathonsSnapshot.docs
-          .map(HackathonModel.fromFirestore)
-          .where((h) => !h.isDeleted)
-          .length,
+      totalHackathons: validHackathons.where((h) => !h.isDeleted).length,
       activeHackathons: activeCount,
     );
   }
@@ -200,7 +218,8 @@ class AdminService {
     return _hackathons
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map(HackathonModel.fromFirestore)
+            .map(_safeHackathonFromFirestore)
+            .whereType<HackathonModel>()
             .where((h) => !h.isDeleted && h.isActive)
             .length);
   }
@@ -221,7 +240,7 @@ class AdminService {
 
   Future<List<HackathonModel>> getAllHackathons({bool includeDeleted = false}) async {
     final snapshot = await _hackathons.get();
-    final hackathons = snapshot.docs.map(HackathonModel.fromFirestore).where((h) {
+    final hackathons = snapshot.docs.map(_safeHackathonFromFirestore).whereType<HackathonModel>().where((h) {
       if (includeDeleted) {
         return true;
       }
@@ -234,7 +253,7 @@ class AdminService {
 
   Stream<List<HackathonModel>> getHackathonsStream({bool includeDeleted = false}) {
     return _hackathons.snapshots().map((snapshot) {
-      final hackathons = snapshot.docs.map(HackathonModel.fromFirestore).where((h) {
+      final hackathons = snapshot.docs.map(_safeHackathonFromFirestore).whereType<HackathonModel>().where((h) {
         if (includeDeleted) {
           return true;
         }
@@ -251,7 +270,7 @@ class AdminService {
     if (!doc.exists) {
       return null;
     }
-    return HackathonModel.fromFirestore(doc);
+    return _safeHackathonFromFirestore(doc);
   }
 
   Future<void> updateHackathon(

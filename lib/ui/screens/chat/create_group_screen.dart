@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/user_model.dart';
@@ -25,7 +26,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final UserService _userService = UserService();
 
   List<UserModel> _searchResults = [];
-  List<UserModel> _selectedMembers = [];
+  final List<UserModel> _selectedMembers = [];
   bool _isSearching = false;
   bool _isCreating = false;
 
@@ -274,7 +275,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     return Chip(
                       avatar: CircleAvatar(
                         backgroundImage: member.profileImageUrl != null
-                            ? NetworkImage(member.profileImageUrl!)
+                          ? CachedNetworkImageProvider(member.profileImageUrl!)
                             : null,
                         child: member.profileImageUrl == null
                             ? Text(member.fullName.initials)
@@ -347,7 +348,7 @@ class _UserSearchTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(vertical: 4),
       leading: CircleAvatar(
         backgroundImage: user.profileImageUrl != null
-            ? NetworkImage(user.profileImageUrl!)
+            ? CachedNetworkImageProvider(user.profileImageUrl!)
             : null,
         backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
         child: user.profileImageUrl == null

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/user_model.dart';
@@ -42,7 +43,7 @@ class UserDetailScreen extends StatelessWidget {
                               alpha: 0.2,
                             ),
                             backgroundImage: user.profileImageUrl != null
-                                ? NetworkImage(user.profileImageUrl!)
+                                ? CachedNetworkImageProvider(user.profileImageUrl!)
                                 : null,
                             child: user.profileImageUrl == null
                                 ? Text(

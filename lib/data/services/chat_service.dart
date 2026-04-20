@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
 
@@ -9,6 +10,34 @@ import '../models/message_model.dart';
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  void _log(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
+
+  ChatModel? _safeChatFromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    try {
+      return ChatModel.fromFirestore(doc);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('ChatService: Skipping malformed chat ${doc.id}: $e');
+      }
+      return null;
+    }
+  }
+
+  MessageModel? _safeMessageFromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    try {
+      return MessageModel.fromFirestore(doc);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('ChatService: Skipping malformed message ${doc.id}: $e');
+      }
+      return null;
+    }
+  }
+
   /// Collection references
   CollectionReference<Map<String, dynamic>> get _chatsCollection =>
       _firestore.collection('chats');
@@ -16,7 +45,7 @@ class ChatService {
   CollectionReference<Map<String, dynamic>> _messagesCollection(
     String chatId,
   ) {
-    print('ChatService: Creating messages collection reference for chat $chatId');
+    _log('ChatService: Creating messages collection reference for chat $chatId');
     return _chatsCollection.doc(chatId).collection('messages');
   }
 
@@ -32,7 +61,10 @@ class ChatService {
           .get();
 
       for (final doc in existingChat.docs) {
-        final chat = ChatModel.fromFirestore(doc);
+        final chat = _safeChatFromFirestore(doc);
+        if (chat == null) {
+          continue;
+        }
         if (chat.participantIds.contains(userId2)) {
           return chat;
         }
@@ -73,10 +105,10 @@ class ChatService {
         .where('participantIds', arrayContains: userId)
         .orderBy('lastMessageTime', descending: true)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList(),
-        );
+      .map((snapshot) => snapshot.docs
+        .map(_safeChatFromFirestore)
+        .whereType<ChatModel>()
+        .toList());
   }
 
   /// Update chat participants (for group chats)
@@ -103,7 +135,7 @@ class ChatService {
     MessageType type = MessageType.text,
   }) async {
     try {
-      print('ChatService: Sending message to chat $chatId from $senderId');
+      _log('ChatService: Sending message to chat $chatId from $senderId');
       
       final messageDoc = _messagesCollection(chatId).doc();
       final message = MessageModel(
@@ -116,11 +148,11 @@ class ChatService {
         readBy: [senderId],
       );
 
-      print('ChatService: Created message with ID ${message.id}');
+      _log('ChatService: Created message with ID ${message.id}');
 
       // Send message
       await messageDoc.set(message.toFirestore());
-      print('ChatService: Message saved to Firestore');
+      _log('ChatService: Message saved to Firestore');
 
       // Update chat's last message
       await _chatsCollection.doc(chatId).update({
@@ -128,11 +160,11 @@ class ChatService {
         'lastMessageSenderId': senderId,
         'lastMessageTime': FieldValue.serverTimestamp(),
       });
-      print('ChatService: Updated chat last message');
+      _log('ChatService: Updated chat last message');
 
       return message;
     } catch (e) {
-      print('ChatService: Error sending message: $e');
+      _log('ChatService: Error sending message: $e');
       rethrow;
     }
   }
@@ -140,22 +172,22 @@ class ChatService {
   /// Get messages for a chat
   /// Optimized: Uses List.of with reversed iterable to avoid double toList() call
   Stream<List<MessageModel>> getMessages(String chatId, {int limit = 50}) {
-    print('ChatService: Getting messages for chat $chatId');
+    _log('ChatService: Getting messages for chat $chatId');
     return _messagesCollection(chatId)
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
         .map(
           (snapshot) {
-            print('ChatService: Received ${snapshot.docs.length} message documents for chat $chatId');
+            _log('ChatService: Received ${snapshot.docs.length} message documents for chat $chatId');
             // Optimized: Create list directly in correct order using reversed
             final messages = List<MessageModel>.of(
               snapshot.docs.map((doc) {
-                print('ChatService: Processing message doc ${doc.id}');
-                return MessageModel.fromFirestore(doc);
-              }).toList().reversed,
+                _log('ChatService: Processing message doc ${doc.id}');
+                return _safeMessageFromFirestore(doc);
+              }).whereType<MessageModel>().toList().reversed,
             );
-            print('ChatService: Returning ${messages.length} processed messages');
+            _log('ChatService: Returning ${messages.length} processed messages');
             return messages;
           },
         );
@@ -175,7 +207,8 @@ class ChatService {
           .get();
 
       return snapshot.docs
-          .map((doc) => MessageModel.fromFirestore(doc))
+          .map(_safeMessageFromFirestore)
+          .whereType<MessageModel>()
           .toList()
           .reversed
           .toList();
@@ -250,11 +283,10 @@ class ChatService {
         .collection('messages')
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => MessageModel.fromFirestore(doc))
-              .toList(),
-        );
+      .map((snapshot) => snapshot.docs
+        .map(_safeMessageFromFirestore)
+        .whereType<MessageModel>()
+        .toList());
   }
 
   /// Get or create private chat
@@ -270,7 +302,10 @@ class ChatService {
         .get();
 
     for (final doc in existingChat.docs) {
-      final chat = ChatModel.fromFirestore(doc);
+      final chat = _safeChatFromFirestore(doc);
+      if (chat == null) {
+        continue;
+      }
       if (chat.participantIds.contains(user2Id)) {
         return chat;
       }
@@ -338,10 +373,10 @@ class ChatService {
         .where('chatType', isEqualTo: ChatType.group.name)
         .orderBy('lastMessageTime', descending: true)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList(),
-        );
+      .map((snapshot) => snapshot.docs
+        .map(_safeChatFromFirestore)
+        .whereType<ChatModel>()
+        .toList());
   }
 
   /// Add member to group chat

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/hackathon_model.dart';
 
 /// Hackathon service for CodeClub
@@ -10,6 +11,19 @@ class HackathonService {
   CollectionReference<Map<String, dynamic>> get _hackathonsCollection =>
       _firestore.collection('hackathons');
 
+  HackathonModel? _safeHackathonFromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    try {
+      return HackathonModel.fromFirestore(doc);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('HackathonService: Skipping malformed hackathon ${doc.id}: $e');
+      }
+      return null;
+    }
+  }
+
   // ==================== HACKATHON OPERATIONS ====================
 
   /// Get all hackathons
@@ -20,7 +34,8 @@ class HackathonService {
           .get();
 
       return snapshot.docs
-          .map((doc) => HackathonModel.fromFirestore(doc))
+          .map(_safeHackathonFromFirestore)
+          .whereType<HackathonModel>()
           .where((h) => h.isVisibleToStudents)
           .toList();
     } catch (e) {
@@ -60,7 +75,7 @@ class HackathonService {
     try {
       final doc = await _hackathonsCollection.doc(hackathonId).get();
       if (doc.exists) {
-        return HackathonModel.fromFirestore(doc);
+        return _safeHackathonFromFirestore(doc);
       }
       return null;
     } catch (e) {
@@ -74,7 +89,8 @@ class HackathonService {
         .orderBy('startDate', descending: false)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => HackathonModel.fromFirestore(doc))
+        .map(_safeHackathonFromFirestore)
+        .whereType<HackathonModel>()
             .where((h) => h.isVisibleToStudents)
             .toList());
   }

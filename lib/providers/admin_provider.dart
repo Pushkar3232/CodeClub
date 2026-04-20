@@ -49,6 +49,11 @@ class AdminProvider extends ChangeNotifier {
   Stream<int> get totalTeamsStream => _adminService.getTotalTeamsStream();
   Stream<int> get activeHackathonsStream => _adminService.getActiveHackathonsStream();
 
+  Future<void> _refreshAdminData({bool includeDeleted = false}) async {
+    await loadAllHackathons(includeDeleted: includeDeleted);
+    await loadDashboardStats();
+  }
+
   Future<void> initializeAdminState() async {
     _isLoading = true;
     _errorMessage = null;
@@ -57,7 +62,7 @@ class AdminProvider extends ChangeNotifier {
     try {
       _currentAdmin = await _adminService.getCurrentAdmin();
       if (_currentAdmin != null) {
-        await Future.wait([loadDashboardStats(), loadAllHackathons()]);
+        await _refreshAdminData();
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -74,7 +79,7 @@ class AdminProvider extends ChangeNotifier {
 
     try {
       _currentAdmin = await _adminService.signInAdmin(email, password);
-      await Future.wait([loadDashboardStats(), loadAllHackathons()]);
+      await _refreshAdminData();
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;
@@ -151,7 +156,7 @@ class AdminProvider extends ChangeNotifier {
           admin.uid,
         );
       }
-      await Future.wait([loadAllHackathons(), loadDashboardStats()]);
+      await _refreshAdminData();
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;
@@ -182,7 +187,7 @@ class AdminProvider extends ChangeNotifier {
       }
 
       await _adminService.updateHackathon(id, data, admin.uid);
-      await Future.wait([loadAllHackathons(), loadDashboardStats()]);
+      await _refreshAdminData();
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;
@@ -203,7 +208,7 @@ class AdminProvider extends ChangeNotifier {
 
     try {
       await _adminService.softDeleteHackathon(id, admin.uid);
-      await Future.wait([loadAllHackathons(), loadDashboardStats()]);
+      await _refreshAdminData();
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;
@@ -223,7 +228,7 @@ class AdminProvider extends ChangeNotifier {
 
     try {
       await _adminService.permanentlyDeleteHackathon(id);
-      await Future.wait([loadAllHackathons(includeDeleted: true), loadDashboardStats()]);
+      await _refreshAdminData(includeDeleted: true);
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;
@@ -244,7 +249,7 @@ class AdminProvider extends ChangeNotifier {
 
     try {
       await _adminService.toggleHackathonStatus(id, status, admin.uid);
-      await Future.wait([loadAllHackathons(), loadDashboardStats()]);
+      await _refreshAdminData();
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;
