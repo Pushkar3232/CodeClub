@@ -26,18 +26,24 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    await FirebaseAppCheck.instance.activate(
-      androidProvider:
-          kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-      appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
-    );
+    if (!kIsWeb) {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: kDebugMode
+            ? AndroidProvider.debug
+            : AndroidProvider.playIntegrity,
+        appleProvider: kDebugMode
+            ? AppleProvider.debug
+            : AppleProvider.appAttest,
+      );
+    }
     if (kDebugMode) {
       debugPrint('Firebase initialized successfully');
     }
 
     // Initialize admin account (runs once)
     try {
-      final adminInitialized = await AdminInitService().initializeAdminAccount();
+      final adminInitialized = await AdminInitService()
+          .initializeAdminAccount();
       if (adminInitialized) {
         AdminInitService.printAdminCredentials();
       }
@@ -123,7 +129,7 @@ class _AppContentState extends State<_AppContent> {
   /// Check internet connection and show dialog if offline
   void _checkInternetConnection() {
     final connectivityProvider = context.read<ConnectivityProvider>();
-    
+
     if (!connectivityProvider.isConnected && !_hasShownNoInternetDialog) {
       _hasShownNoInternetDialog = true;
       _showNoInternetDialog();
