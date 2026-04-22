@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../data/models/hackathon_model.dart';
 import '../../../providers/admin_provider.dart';
 import '../widgets/admin_auth_guard.dart';
@@ -25,31 +26,61 @@ class _AdminHackathonListScreenState extends State<AdminHackathonListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return AdminAuthGuard(
       child: Scaffold(
-        appBar: AppBar(title: const Text('Manage Hackathons')),
+        backgroundColor: isDarkMode ? Colors.black : Colors.grey[50],
+        appBar: AppBar(
+          elevation: 0,
+          title: const Text(
+            'Manage Hackathons',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+            ),
+          ),
+        ),
         body: Consumer<AdminProvider>(
           builder: (context, provider, _) {
             final list = provider.filteredHackathons;
 
             return Column(
               children: [
+                // Search Bar
                 Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   child: TextField(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Search by title or venue',
-                      prefixIcon: Icon(Icons.search_rounded),
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primaryBlue),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.primaryBlue,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     onChanged: provider.setSearchQuery,
                   ),
                 ),
+                
+                // Filter Chips
                 SizedBox(
-                  height: 42,
+                  height: 48,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: [
                       _FilterChip(
                         label: 'All',
@@ -67,6 +98,8 @@ class _AdminHackathonListScreenState extends State<AdminHackathonListScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                
+                // List or Empty State
                 Expanded(
                   child: provider.isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -75,22 +108,65 @@ class _AdminHackathonListScreenState extends State<AdminHackathonListScreen> {
                           child: list.isEmpty
                               ? ListView(
                                   children: [
-                                    SizedBox(height: 120),
-                                    Center(child: Text('No hackathons found.')),
+                                    SizedBox(
+                                      height: 280,
+                                      child: Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.emoji_events_outlined,
+                                              size: 56,
+                                              color: Colors.grey[400],
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'No hackathons found',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyLarge
+                                                  ?.copyWith(
+                                                    color: Colors.grey[600],
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'Create a new hackathon to get started',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                    color: Colors.grey[500],
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 )
                               : ListView.builder(
-                                  padding: const EdgeInsets.all(12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
                                   itemCount: list.length,
                                   itemBuilder: (context, index) {
                                     final hackathon = list[index];
                                     return Dismissible(
                                       key: ValueKey(hackathon.id),
                                       background: Container(
+                                        margin: const EdgeInsets.symmetric(vertical: 8),
                                         alignment: Alignment.centerLeft,
-                                        padding: const EdgeInsets.only(left: 16),
-                                        color: Colors.red.withValues(alpha: 0.2),
-                                        child: const Icon(Icons.delete_outline_rounded),
+                                        padding: const EdgeInsets.only(left: 20),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.error.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(
+                                          Icons.delete_outline_rounded,
+                                          color: AppColors.error,
+                                        ),
                                       ),
                                       direction: DismissDirection.startToEnd,
                                       confirmDismiss: (_) => _confirmDelete(
@@ -138,8 +214,9 @@ class _AdminHackathonListScreenState extends State<AdminHackathonListScreen> {
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => context.push('/admin/hackathons/create'),
-          icon: const Icon(Icons.add),
-          label: const Text('Create'),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Create Hackathon'),
+          elevation: 8,
         ),
       ),
     );
@@ -160,6 +237,9 @@ class _AdminHackathonListScreenState extends State<AdminHackathonListScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -183,9 +263,23 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
+      child: FilterChip(
+        label: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : null,
+          ),
+        ),
         selected: selected,
+        backgroundColor: Colors.transparent,
+        selectedColor: AppColors.primaryBlue,
+        side: BorderSide(
+          color: selected
+              ? AppColors.primaryBlue
+              : Colors.grey[300]!,
+          width: selected ? 0 : 1,
+        ),
         onSelected: (_) => onTap(),
       ),
     );

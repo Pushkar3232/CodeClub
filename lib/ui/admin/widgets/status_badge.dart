@@ -18,19 +18,42 @@ class StatusBadge extends StatelessWidget {
       HackathonStatus.cancelled => AppColors.error,
     };
 
+    final icon = switch (status) {
+      HackathonStatus.draft => Icons.edit_rounded,
+      HackathonStatus.published => Icons.check_circle_rounded,
+      HackathonStatus.ongoing => Icons.play_circle_filled_rounded,
+      HackathonStatus.completed => Icons.done_all_rounded,
+      HackathonStatus.cancelled => Icons.cancel_rounded,
+    };
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        status.label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1,
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 14,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status.label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
